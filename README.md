@@ -16,7 +16,7 @@
  in the middleware patten. A "pipe" can apply it's changes/logic or stop the flow. It is the "pipeline"
  that initiates the next call.
 
- The follow example is illustrating a "New User" flow through the pipeline.
+ The following example is illustrating a "New User" flow through the pipeline.
 
  ```rust
 #  #![allow(dead_code)]
