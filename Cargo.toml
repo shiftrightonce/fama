@@ -2,6 +2,12 @@
 name = "fama"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "Pipeline Manager"
+repository = "https://github.com/shiftrightonce/fama"
+rust-version = "1.70"
+keywords = ["webdev", "web", "event", "pipeline", "pipeline-pattern"]
+categories = ["asynchronous", "web-programming"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
