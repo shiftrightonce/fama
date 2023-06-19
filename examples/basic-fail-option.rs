@@ -2,6 +2,7 @@
 
 #[tokio::main]
 async fn main() {
+    // This example is identical to "basic-fail" but the data input is wrapped in an Option
     let new_user = fama::Pipeline::pass(Some(NewUser::default()))
         .through(ValidateUserName)
         .through(GenerateUserId)

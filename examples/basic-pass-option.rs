@@ -2,6 +2,7 @@
 
 #[tokio::main]
 async fn main() {
+    // This example is identical to "basic-pass" but the data input is wrapped in an Option
     let new_user = fama::Pipeline::pass(Some(NewUser {
         username: Some("jamesbrown".into()),
         ..NewUser::default()

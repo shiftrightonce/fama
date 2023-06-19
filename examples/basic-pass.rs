@@ -2,8 +2,8 @@
 
 #[tokio::main]
 async fn main() {
-    let new_user2 = fama::Pipeline::pass(NewUser {
-        username: Some("john".into()),
+    let new_user = fama::Pipeline::pass(NewUser {
+        username: Some("john".into()), // This time, the input reaches the end of the pipeline because we have a username
         ..NewUser::default()
     })
     .through(ValidateUserName)
@@ -15,7 +15,7 @@ async fn main() {
 
     println!(
         "passes validation and all fields are set : {:#?}",
-        &new_user2
+        &new_user
     );
 }
 

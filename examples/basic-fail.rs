@@ -2,17 +2,19 @@
 
 #[tokio::main]
 async fn main() {
-    let new_user = fama::Pipeline::pass(NewUser::default())
-        .through(ValidateUserName)
-        .through(GenerateUserId)
-        .through(ApplyDefaultRole)
+    // 1. Create a pipeline
+    let new_user = fama::Pipeline::pass(NewUser::default()) // Start of the pipeline
+        .through(ValidateUserName) // pipe
+        .through(GenerateUserId) // pipe
+        .through(ApplyDefaultRole) // ...
         .through(SaveNewUserData)
-        .deliver()
+        .deliver() // Starts the flow
         .await;
 
-    println!("fails validation: {:#?}", &new_user);
+    println!("fails validation: {:#?}", &new_user); // The flow is stopped by the "ValidateUserName" pipe because the user does not have a "username"
 }
 
+// pipeline input
 #[derive(Debug)]
 struct NewUser {
     internal_id: i32,
@@ -47,9 +49,10 @@ impl fama::FamaPipe for ValidateUserName {
     async fn receive_pipe_content(&self, mut content: fama::PipeContent) -> fama::PipeContent {
         let new_user: &mut NewUser = content.inner_mut().unwrap();
 
+        // When the username is "none", stop the flow
         if new_user.username.is_none() {
             println!("User name cannot be empty");
-            content.stop_the_flow();
+            content.stop_the_flow(); // notify the pipeline to stop flowing.
         }
 
         content

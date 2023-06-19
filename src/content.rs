@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use std::any::Any;
 
+/// The type that is pass to "receive_pipe_content"
 #[derive(Debug)]
 pub struct PipeContent(Box<dyn Any + Send + Sync + 'static>, pub(crate) bool);
 
@@ -25,6 +26,7 @@ impl PipeContent {
         self
     }
 
+    /// Notify the pipeline to stop flowing the content
     pub fn stop_the_flow(&mut self) {
         self.1 = true;
     }
