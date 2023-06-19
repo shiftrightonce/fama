@@ -2,7 +2,7 @@
 
 **Fama is a pipeline manager**
 
-**Fama means "pass to someone" or "pass me"**
+> Fama means "pass to someone" or "pass me"
 
  Fama makes it easy to layout the steps
  require to accomplish a task.
