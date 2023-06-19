@@ -111,7 +111,7 @@
          let new_user: &mut NewUser = content.inner_mut().unwrap();
 
          if new_user.id.is_none() {
-             new_user.id = Some(uuid::Uuid::new_v4().to_string()); // Generate an set the ID
+             new_user.id = Some(uuid::Uuid::new_v4().to_string()); // Generate and set the ID
          }
 
          content
