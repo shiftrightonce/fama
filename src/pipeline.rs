@@ -1,12 +1,13 @@
 use crate::content::PipeContent;
 use async_trait::async_trait;
-use std::marker::PhantomData;
+use std::{future::Future, marker::PhantomData};
 
 /// The pipes manager
 pub struct Pipeline<T: Send + Sync + 'static> {
     pipes: Vec<Box<dyn FamaPipe>>,
     fluid: PipeContent,
-    inner: PhantomData<T>,
+    phantom: PhantomData<T>,
+    went_through: bool,
 }
 
 impl<T: Send + Sync + 'static> Pipeline<T> {
@@ -16,7 +17,8 @@ impl<T: Send + Sync + 'static> Pipeline<T> {
         Self {
             pipes: Vec::new(),
             fluid: PipeContent::new(Box::new(fluid)),
-            inner: PhantomData,
+            phantom: PhantomData,
+            went_through: false,
         }
     }
 
