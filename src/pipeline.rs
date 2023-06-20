@@ -28,15 +28,38 @@ impl<T: Send + Sync + 'static> Pipeline<T> {
         self
     }
 
+    /// Adds a async function as a pipe
+    pub fn through_fn<F: PipeFn>(mut self, f: F) -> Self {
+        self.pipes.push(Box::new(WrapFn(f)));
+        self
+    }
+
     /// Starts flowing the content through the pipes
-    pub async fn deliver(mut self) -> Box<T> {
+    pub async fn deliver(self) -> Box<T> {
+        self.try_delivering().await.fluid.inner()
+    }
+
+    /// Starts flowing but return the specified type
+    pub async fn deliver_as<R: Send + Sync + 'static>(self) -> Box<R> {
+        self.try_delivering().await.fluid.inner()
+    }
+
+    /// Start flowing and return a confirmation if we got to the end
+    pub async fn confirm(self) -> bool {
+        self.try_delivering().await.went_through
+    }
+
+    async fn try_delivering(mut self) -> Self {
+        self.went_through = true;
         for a_pipe in self.pipes.iter() {
             self.fluid = a_pipe.receive_pipe_content(self.fluid).await;
             if self.fluid.1 {
+                self.went_through = false;
                 break;
             }
         }
-        self.fluid.inner()
+
+        self
     }
 }
 
@@ -74,5 +97,30 @@ pub trait FamaPipe: Send + Sync + 'static {
         Self: Sized,
     {
         Box::new(self)
+    }
+}
+
+struct WrapFn<T: PipeFn + Send + Sync>(T);
+
+#[async_trait]
+impl<T: PipeFn + Send + Sync> FamaPipe for WrapFn<T> {
+    async fn receive_pipe_content(&self, content: PipeContent) -> PipeContent {
+        self.0.call((content,)).await
+    }
+}
+
+pub trait PipeFn: Send + Sync + 'static {
+    type Future: Future<Output = PipeContent> + Send;
+    fn call(&self, args: (PipeContent,)) -> Self::Future;
+}
+
+impl<Func, Fut> PipeFn for Func
+where
+    Func: Send + Sync + Fn(PipeContent) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = PipeContent> + Send,
+{
+    type Future = Fut;
+    fn call(&self, (arg1,): (PipeContent,)) -> Self::Future {
+        (self)(arg1)
     }
 }
