@@ -16,6 +16,11 @@ impl PipeContent {
         self.0.downcast_mut::<T>()
     }
 
+    /// Returns the inner ref content
+    pub fn inner_ref<T: 'static>(&self) -> Option<&T> {
+        self.0.downcast_ref::<T>()
+    }
+
     pub(crate) fn inner<T: 'static>(self) -> Box<T> {
         self.0.downcast::<T>().unwrap()
     }
