@@ -23,7 +23,13 @@
 //!       .through(GenerateUserId)   // pipe "GenerateUserId" generates and set the user ID.  
 //!       .through(ApplyDefaultRole) // pipe "ApplyDefaultRole" will give the user the "Basic" role if the list of roles is empty
 //!       .through(SaveNewUserData)  // pipe "SaveNewUserData"  saves the data to the database. At this stage, we know all is well
-//!       .deliver() // starts the process
+//!       .through_fn(|c: fama::PipeContent| async {
+//!           println!("yep, you can pass a closure or function too");
+//!            c
+//!       })
+//!       .deliver() // starts the process or use
+//!       // .deliver_as::<T>()  // T is the type you are expecting instead of the type passed into the pipeline
+//!       // .confirm()          // Return true when the content passes throug all the pipes
 //!       .await;
 //!
 //!   // Fails because "new user" does not have a "username"
