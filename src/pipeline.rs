@@ -16,7 +16,7 @@ impl<T: Send + Sync + 'static> Pipeline<T> {
     pub fn pass(fluid: T) -> Self {
         Self {
             pipes: Vec::new(),
-            fluid: PipeContent::new(Box::new(fluid)),
+            fluid: PipeContent::new(fluid),
             phantom: PhantomData,
             went_through: false,
         }

@@ -6,8 +6,12 @@ use std::any::Any;
 pub struct PipeContent(Box<dyn Any + Send + Sync + 'static>, pub(crate) bool);
 
 impl PipeContent {
-    /// Creates a new instance of this type
-    pub(crate) fn new(inner: Box<dyn Any + Send + Sync + 'static>) -> Self {
+    /// Creates a new instance from the supplied type instance
+    pub fn new<T: Send + Sync + 'static>(inner: T) -> Self {
+        Self::from(Box::new(inner))
+    }
+
+    pub(crate) fn from(inner: Box<dyn Any + Send + Sync + 'static>) -> Self {
         Self(inner, false)
     }
 
