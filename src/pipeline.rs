@@ -1,95 +1,93 @@
-use crate::content::PipeContent;
 use async_trait::async_trait;
-use std::{future::Future, marker::PhantomData};
+use busybody::ServiceContainer;
+use std::{future::Future, marker::PhantomData, sync::Arc};
+
+use crate::PipeContent;
 
 /// The pipes manager
 pub struct Pipeline<T: Send + Sync + 'static> {
-    pipes: Vec<Box<dyn FamaPipe>>,
     fluid: PipeContent,
     phantom: PhantomData<T>,
+    container: Arc<ServiceContainer>,
     went_through: bool,
 }
 
-impl<T: Send + Sync + 'static> Pipeline<T> {
+impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     /// Accepts the pipeline content/input.
     /// This is the beginning of the pipeline
-    pub fn pass(fluid: T) -> Self {
+    pub fn pass(content: T) -> Self {
+        let mut fluid = PipeContent::default();
+
+        let container = Arc::new(ServiceContainer::proxy());
+        container.set_type(content);
+
+        fluid.1 = Some(container.clone());
+        container.set_type(fluid.clone());
+
         Self {
-            pipes: Vec::new(),
-            fluid: PipeContent::new(fluid),
+            fluid,
+            container,
             phantom: PhantomData,
             went_through: false,
         }
     }
 
-    /// Adds a pipe to the pipeline. Call this method each time you want to add a pipe to the pipeline
-    pub fn through<P: FamaPipe>(mut self, p: P) -> Self {
-        self.pipes.push(Box::new(p));
-        self
-    }
-
-    /// Adds a async function as a pipe
-    pub fn through_fn<F: PipeFn>(mut self, f: F) -> Self {
-        self.pipes.push(Box::new(WrapFn(f)));
-        self
-    }
-
-    /// Starts flowing the content through the pipes
-    pub async fn deliver(self) -> Box<T> {
-        self.try_delivering().await.fluid.inner()
-    }
-
-    /// Starts flowing but return the specified type
-    pub async fn deliver_as<R: Send + Sync + 'static>(self) -> Box<R> {
-        self.try_delivering().await.fluid.inner()
-    }
-
-    /// Start flowing and return a confirmation if we got to the end
-    pub async fn confirm(self) -> bool {
-        self.try_delivering().await.went_through
-    }
-
-    async fn try_delivering(mut self) -> Self {
-        self.went_through = true;
-        for a_pipe in self.pipes.iter() {
-            self.fluid = a_pipe.receive_pipe_content(self.fluid).await;
-            if self.fluid.1 {
-                self.went_through = false;
-                break;
+    /// Accepts a closure or function as a pipe.
+    /// The closure can accept zero or more arguements.
+    /// Unlike a struct pipe, a closure does not have to use a tuple
+    /// for multiple arguments. Arguments can be up to 17
+    pub async fn through_fn<P, Args>(mut self, pipe: P) -> Self
+    where
+        P: PipeFn<Args>,
+        Args: busybody::Injectable + 'static,
+    {
+        if !self.fluid.0 {
+            let args = Args::inject(&self.container).await;
+            if let Some(f) = pipe.call(args).await {
+                self.fluid = f;
             }
+            self.went_through = true;
+        } else {
+            self.went_through = false;
         }
 
         self
     }
+
+    /// Accepts an instance of a struct that implements `fama::FamaPipe`
+    pub async fn through<P, Args>(mut self, pipe: P) -> Self
+    where
+        P: FamaPipe<Args>,
+        Args: busybody::Injectable + 'static,
+    {
+        if !self.fluid.0 {
+            let args = Args::inject(&self.container).await;
+            if let Some(f) = pipe.receive_pipe_content(args).await {
+                self.fluid = f
+            }
+            self.went_through = true;
+        } else {
+            self.went_through = false;
+        }
+
+        self
+    }
+
+    /// Returns the passed variable
+    pub fn deliver(self) -> T {
+        self.container.get_type().unwrap()
+    }
+
+    /// Returns true if the content went through all the registered pipes
+    pub fn confirm(self) -> bool {
+        self.went_through
+    }
 }
 
-/// The trait that must be implemented by a pipe
-///
-/// `async_trait` makes it easy to implement this trait
-///
-///```rust
-///#  #![allow(dead_code)]
-///
-///# #[tokio::main]
-///# async fn main() {}
-///
-/// struct MyPipe;
-///
-/// #[fama::async_trait]
-/// impl fama::FamaPipe for MyPipe {
-///     async fn receive_pipe_content(&self, mut content: fama::PipeContent) -> fama::PipeContent {
-///         // Your logic here
-///        
-///        content
-///    }
-/// }
-///
-/// ```
-///
 #[async_trait]
-pub trait FamaPipe: Send + Sync + 'static {
+pub trait FamaPipe<Args = ()> {
     /// Where a pipe logic resides
-    async fn receive_pipe_content(&self, content: PipeContent) -> PipeContent;
+    async fn receive_pipe_content(&self, args: Args) -> Option<PipeContent>;
 
     /// Wraps the type in a Box
     fn to_pipe(self) -> Box<Self>
@@ -100,27 +98,63 @@ pub trait FamaPipe: Send + Sync + 'static {
     }
 }
 
-struct WrapFn<T: PipeFn + Send + Sync>(T);
+pub trait PipeFn<Args>: Send + Sync + 'static {
+    type Future: Future<Output = Option<PipeContent>> + Send;
 
-#[async_trait]
-impl<T: PipeFn + Send + Sync> FamaPipe for WrapFn<T> {
-    async fn receive_pipe_content(&self, content: PipeContent) -> PipeContent {
-        self.0.call((content,)).await
-    }
+    fn call(&self, args: Args) -> Self::Future;
 }
 
-pub trait PipeFn: Send + Sync + 'static {
-    type Future: Future<Output = PipeContent> + Send;
-    fn call(&self, args: (PipeContent,)) -> Self::Future;
-}
-
-impl<Func, Fut> PipeFn for Func
+impl<Func, Fut> PipeFn<()> for Func
 where
-    Func: Send + Sync + Fn(PipeContent) -> Fut + Send + Sync + 'static,
-    Fut: Future<Output = PipeContent> + Send,
+    Func: Send + Sync + Fn() -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Option<PipeContent>> + Send,
 {
     type Future = Fut;
-    fn call(&self, (arg1,): (PipeContent,)) -> Self::Future {
-        (self)(arg1)
+    fn call(&self, _: ()) -> Self::Future {
+        (self)()
     }
 }
+
+impl<Func, Arg1, Fut> PipeFn<(Arg1,)> for Func
+where
+    Func: Send + Sync + Fn(Arg1) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Option<PipeContent>> + Send,
+{
+    type Future = Fut;
+    fn call(&self, (c,): (Arg1,)) -> Self::Future {
+        (self)(c)
+    }
+}
+
+macro_rules! pipe_func{
+    ($($T: ident),*) => {
+        impl<Func, $($T),+, Fut> PipeFn <($($T),+)> for Func
+         where Func: Fn($($T),+) -> Fut + Send + Sync + 'static,
+         Fut: Future<Output = Option<PipeContent>> + Send,
+        {
+            type Future = Fut;
+
+            #[allow(non_snake_case)]
+            fn call(&self, ($($T),+): ($($T),+)) -> Self::Future {
+                (self)($($T),+)
+            }
+        }
+    };
+}
+
+pipe_func! {Arg1, Arg2}
+pipe_func! {Arg1, Arg2, Arg3}
+pipe_func! {Arg1, Arg2, Arg3, Arg4}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5, Arg6}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7, Arg8}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7, Arg8, Arg9}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7, Arg8, Arg9, Arg10}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7, Arg8, Arg9, Arg10, Arg11}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7, Arg8, Arg9, Arg10, Arg11, Arg12}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7, Arg8, Arg9, Arg10, Arg11, Arg12, Arg13}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7, Arg8, Arg9, Arg10, Arg11, Arg12, Arg13, Arg14}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7, Arg8, Arg9, Arg10, Arg11, Arg12, Arg13, Arg14, Arg15}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7, Arg8, Arg9, Arg10, Arg11, Arg12, Arg13, Arg14, Arg15, Arg16}
+pipe_func! {Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7, Arg8, Arg9, Arg10, Arg11, Arg12, Arg13, Arg14, Arg15, Arg16, Arg17}

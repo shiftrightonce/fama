@@ -1,42 +1,35 @@
-#![allow(dead_code)]
-use std::any::Any;
+use busybody::ServiceContainer;
+use std::sync::Arc;
 
-/// The type that is pass to "receive_pipe_content"
-#[derive(Debug)]
-pub struct PipeContent(Box<dyn Any + Send + Sync + 'static>, pub(crate) bool);
+#[derive(Clone)]
+pub struct PipeContent(pub(crate) bool, pub(crate) Option<Arc<ServiceContainer>>);
+
+impl Default for PipeContent {
+    fn default() -> Self {
+        Self(false, None)
+    }
+}
+
+#[busybody::async_trait]
+impl busybody::Injectable for PipeContent {
+    async fn inject(c: &ServiceContainer) -> Self {
+        c.get_type().unwrap_or_else(|| Self::default())
+    }
+}
 
 impl PipeContent {
-    /// Creates a new instance from the supplied type instance
-    pub fn new<T: Send + Sync + 'static>(inner: T) -> Self {
-        Self::from(Box::new(inner))
+    /// Returns a busybody's ServiceContainer
+    pub fn container(&self) -> &Arc<ServiceContainer> {
+        &self.1.as_ref().unwrap()
     }
 
-    pub(crate) fn from(inner: Box<dyn Any + Send + Sync + 'static>) -> Self {
-        Self(inner, false)
-    }
-
-    /// Returns a ref mut of the inner content
-    pub fn inner_mut<T: 'static>(&mut self) -> Option<&mut T> {
-        self.0.downcast_mut::<T>()
-    }
-
-    /// Returns the inner ref content
-    pub fn inner_ref<T: 'static>(&self) -> Option<&T> {
-        self.0.downcast_ref::<T>()
-    }
-
-    pub(crate) fn inner<T: 'static>(self) -> Box<T> {
-        self.0.downcast::<T>().unwrap()
-    }
-
-    /// Replace the inner content with this new version
-    pub fn set_inner<T: Send + Sync + 'static>(&mut self, inner: T) -> &mut Self {
-        self.0 = Box::new(inner);
-        self
+    pub fn store<T: Clone + Send + Sync + 'static>(&self, data: T) -> &Self {
+        self.container().set_type(data);
+        &self
     }
 
     /// Notify the pipeline to stop flowing the content
     pub fn stop_the_flow(&mut self) {
-        self.1 = true;
+        self.0 = true;
     }
 }

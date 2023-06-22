@@ -1,6 +1,6 @@
 [package]
 name = "fama"
-version = "0.1.4"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 description = "Pipeline Manager"
@@ -13,6 +13,7 @@ categories = ["asynchronous", "web-programming"]
 
 [dependencies]
 async-trait = "0.1.68"
+busybody = { version = "0.2.6" }
 
 [dev-dependencies]
 tokio = { version = "1.28.2", features = ["full"] }

@@ -19,18 +19,16 @@
 //! async fn main() {
 //!   // A new user instance is being passed through the pipeline
 //!   let new_user = fama::Pipeline::pass(NewUser::default()) // The input/content
-//!       .through(ValidateUserName) // pipe "ValidateUserName" will stop the flow if the user does not have a "username"
-//!       .through(GenerateUserId)   // pipe "GenerateUserId" generates and set the user ID.  
-//!       .through(ApplyDefaultRole) // pipe "ApplyDefaultRole" will give the user the "Basic" role if the list of roles is empty
-//!       .through(SaveNewUserData)  // pipe "SaveNewUserData"  saves the data to the database. At this stage, we know all is well
+//!       .through(ValidateUserName).await  // pipe "ValidateUserName" will stop the flow if the user does not have a "username"
+//!       .through(GenerateUserId).await    // pipe "GenerateUserId" generates and set the user ID.  
+//!       .through(ApplyDefaultRole).await  // pipe "ApplyDefaultRole" will give the user the "Basic" role if the list of roles is empty
+//!       .through(SaveNewUserData).await   // pipe "SaveNewUserData"  saves the data to the database. At this stage, we know all is well
 //!       .through_fn(|c: fama::PipeContent| async {
 //!           println!("yep, you can pass a closure or function too");
-//!            c
-//!       })
-//!       .deliver() // starts the process or use
-//!       // .deliver_as::<T>()  // T is the type you are expecting instead of the type passed into the pipeline
-//!       // .confirm()          // Return true when the content passes throug all the pipes
-//!       .await;
+//!          Some(c)
+//!       }).await
+//!       .deliver();                       // starts the process or use
+//!       // .confirm()                     // Return true when the content passes throug all the pipes
 //!
 //!   // Fails because "new user" does not have a "username"
 //!   println!("fails validation: {:#?}", &new_user);
@@ -41,12 +39,11 @@
 //!         username: Some("user1".into()),  // "new user" has a username
 //!         ..NewUser::default()
 //!     })
-//!     .through(ValidateUserName)
-//!     .through(GenerateUserId)
-//!     .through(ApplyDefaultRole)
-//!     .through(SaveNewUserData)
-//!     .deliver()
-//!     .await;
+//!     .through(ValidateUserName).await
+//!     .through(GenerateUserId).await
+//!     .through(ApplyDefaultRole).await
+//!     .through(SaveNewUserData).await
+//!     .deliver();
 //!
 //!   println!(
 //!         "passes validation and all fields are set : {:#?}",
@@ -55,7 +52,7 @@
 //! }
 //!
 //! // The content or the pipeline input. Could be any type
-//! #[derive(Debug)]
+//! #[derive(Debug, Clone)]
 //! struct NewUser {
 //!   internal_id: i32,
 //!   id: Option<String>,
@@ -74,76 +71,85 @@
 //!   }
 //! }
 //!
+//! // making the pipe input type injectable
+//! #[fama::async_trait]
+//! impl busybody::Injectable for NewUser {
+//!  async fn inject(c: &busybody::ServiceContainer) -> Self {
+//!     // get the instace of the type in the current scope or
+//!     // create a new instance
+//!     c.proxy_value().unwrap_or_else(|| Self::default())
+//!  }
+//! }
+//!
 //! // The various roles a user can have
-//! #[derive(Debug)]
+//! #[derive(Debug, Clone)]
 //! enum UserRole {
 //!   Admin,
 //!   ContentCreator,
 //!   Moderator,
 //!   Basic,
 //! }
-// !
+//!
 //! struct ValidateUserName;
 //!
 //! // A struct becomes a pipe when it implements "fama::FamaPipe"
 //! #[fama::async_trait]
-//! impl fama::FamaPipe for ValidateUserName {
+//! impl fama::FamaPipe<(NewUser, fama::PipeContent)> for ValidateUserName {
 //!
 //!   // The only requirement is to implement "receive_pipe_content" method
-//!    async fn receive_pipe_content(&self, mut content: fama::PipeContent) -> fama::PipeContent {
-//!        let new_user: &mut NewUser = content.inner_mut().unwrap(); // get pipeline content
+//!    async fn receive_pipe_content(&self, (new_user, mut content): (NewUser, fama::PipeContent)) -> Option<fama::PipeContent> {
 //!  
+//1        // When the username is "none", stop the flow
 //!        if new_user.username.is_none() {
 //!            println!("User name cannot be empty");
 //!            content.stop_the_flow(); // Stop the pipeline flow. Pipes below this pipe will not get call
 //!        }
 //!
-//!
-//!       content
+//!       Some(content)
 //!   }
 //! }
 //!
 //! struct GenerateUserId;
-
+//!
 //! #[fama::async_trait]
-//! impl fama::FamaPipe for GenerateUserId {
-//!     async fn receive_pipe_content(&self, mut content: fama::PipeContent) -> fama::PipeContent {
-//!         let new_user: &mut NewUser = content.inner_mut().unwrap();
+//! impl fama::FamaPipe<(NewUser, fama::PipeContent)> for GenerateUserId {
+//!     async fn receive_pipe_content(&self, (mut new_user, content): (NewUser,fama::PipeContent)) -> Option<fama::PipeContent> {
 //!
 //!         if new_user.id.is_none() {
 //!             new_user.id = Some(uuid::Uuid::new_v4().to_string()); // Generate and set the ID
+//!             content.store(new_user);
 //!         }
 //!
-//!         content
+//!       None
 //!     }
 //! }
 //!
 //! struct ApplyDefaultRole;
 //!
 //! #[fama::async_trait]
-//! impl fama::FamaPipe for ApplyDefaultRole {
-//!     async fn receive_pipe_content(&self, mut content: fama::PipeContent) -> fama::PipeContent {
-//!         let new_user: &mut NewUser = content.inner_mut().unwrap();
+//! impl fama::FamaPipe<(NewUser, fama::PipeContent)> for ApplyDefaultRole {
+//!     async fn receive_pipe_content(&self, (mut new_user, content): (NewUser,fama::PipeContent)) -> Option<fama::PipeContent> {
 //!
 //!         if new_user.role.is_none() {
 //!             new_user.role = Some(vec![UserRole::Basic]); // Apply default role
+//!             content.store(new_user);
 //!        }
 //!
-//!         content
+//!         Some(content)
 //!     }
 //! }
 //!
 //! struct SaveNewUserData;
 //! #[fama::async_trait]
-//! impl fama::FamaPipe for SaveNewUserData {
-//!     async fn receive_pipe_content(&self, mut content: fama::PipeContent) -> fama::PipeContent {
-//!         let new_user: &mut NewUser = content.inner_mut().unwrap();
+//! impl fama::FamaPipe<(NewUser, fama::PipeContent)> for SaveNewUserData {
+//!     async fn receive_pipe_content(&self, (mut new_user, content): (NewUser,fama::PipeContent)) -> Option<fama::PipeContent> {
 //!
 //!         println!(">> saving new user: {:?}", &new_user);
 //!
 //!         new_user.internal_id = 1; // pretend we persisted the data to a database
+//!         content.store(new_user);
 //!
-//!         content
+//!         Some(content)
 //!     }
 //! }
 //! ```
