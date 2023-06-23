@@ -27,7 +27,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "busybody"
-version = "0.2.5"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d502784f0a77b020dd29c58dca3daa618c40edd84193ac7bf0b8ad0f10ff1ff3"
 dependencies = [
  "async-trait",
  "futures",
@@ -47,7 +49,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "fama"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-trait",
  "busybody",
