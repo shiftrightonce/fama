@@ -33,7 +33,7 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     }
 
     /// Accepts a closure or function as a pipe.
-    /// The closure can accept zero or more arguements.
+    /// The closure can accept zero or more arguments.
     /// Unlike a struct pipe, a closure does not have to use a tuple
     /// for multiple arguments. Arguments can be up to 17
     pub async fn through_fn<P, Args>(mut self, pipe: P) -> Self
