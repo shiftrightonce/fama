@@ -80,7 +80,7 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
 
     /// Returns a different type that may have been set
     /// by one of the pipes
-    pub fn deliver_as<E: Clone + 'static>(self) -> E {
+    pub fn deliver_as<R: Clone + 'static>(self) -> R {
         self.container.get_type().unwrap()
     }
 
