@@ -18,15 +18,14 @@ async fn main() {
             new_user.id = Some(uuid::Uuid::new_v4().to_string());
             content.store(new_user);
         }
-
-        None
+        true
     })
     .await
     .through(ApplyDefaultRole)
     .await // A struct pipe
     .through(SaveNewUserData)
     .await // Another struct pipe
-    .confirm(); // Confirm returns true when the conten flows through all the pipes
+    .confirm(); // Confirm returns true when the content flows through all the pipes
 
     println!("new user created? {}", created);
 }
@@ -67,7 +66,7 @@ enum UserRole {
     Basic,
 }
 
-async fn validate_user(new_user: NewUser, mut pipe: PipeContent) -> Option<PipeContent> {
+async fn validate_user(new_user: NewUser, pipe: PipeContent) -> Option<PipeContent> {
     // When the username is "none", stop the flow
     if new_user.username.is_none() {
         println!("User name cannot be empty");
@@ -80,31 +79,22 @@ async fn validate_user(new_user: NewUser, mut pipe: PipeContent) -> Option<PipeC
 struct ApplyDefaultRole;
 
 #[fama::async_trait]
-impl fama::FamaPipe<(NewUser, PipeContent)> for ApplyDefaultRole {
-    async fn receive_pipe_content(
-        &self,
-        (mut new_user, pipe): (NewUser, PipeContent),
-    ) -> Option<PipeContent> {
+impl fama::FamaPipe<(NewUser, PipeContent), ()> for ApplyDefaultRole {
+    async fn receive_pipe_content(&self, (mut new_user, pipe): (NewUser, PipeContent)) {
         if new_user.role.is_none() {
             new_user.role = Some(vec![UserRole::Basic]);
             pipe.store(new_user);
         }
-        None
     }
 }
 
 struct SaveNewUserData;
 #[fama::async_trait]
-impl fama::FamaPipe<(NewUser, PipeContent)> for SaveNewUserData {
-    async fn receive_pipe_content(
-        &self,
-        (mut new_user, content): (NewUser, PipeContent),
-    ) -> Option<PipeContent> {
+impl fama::FamaPipe<(NewUser, PipeContent), ()> for SaveNewUserData {
+    async fn receive_pipe_content(&self, (mut new_user, content): (NewUser, PipeContent)) {
         new_user.internal_id = 1;
 
         println!(">> saving new user: {:?}", &new_user);
         content.store(new_user);
-
-        None
     }
 }

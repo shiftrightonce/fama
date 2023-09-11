@@ -10,7 +10,6 @@ async fn main() {
     let score = fama::Pipeline::pass(500)
         .through_fn(|content: PipeContent| async move {
             content.container().set_type(Config(250)); // In this pipeline scope, the instance of config has the value 250
-            None
         })
         .await
         .through_fn(|config: Config, count: i32| async move {
@@ -20,8 +19,6 @@ async fn main() {
 
             // This  instance of config will have the value 250
             dbg!(config);
-
-            None
         })
         .await
         .deliver(); // Start of the pipeline

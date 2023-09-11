@@ -29,14 +29,9 @@ async fn main() {
 struct DoubleNumber;
 
 #[fama::async_trait]
-impl fama::FamaPipe<(i32, PipeContent)> for DoubleNumber {
-    async fn receive_pipe_content(
-        &self,
-        (number, content): (i32, PipeContent),
-    ) -> Option<fama::PipeContent> {
+impl fama::FamaPipe<(i32, PipeContent), ()> for DoubleNumber {
+    async fn receive_pipe_content(&self, (number, content): (i32, PipeContent)) {
         content.store(2 * number);
-
-        None
     }
 }
 

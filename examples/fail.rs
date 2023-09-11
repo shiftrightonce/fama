@@ -17,8 +17,6 @@ async fn main() {
 
             new_user.internal_id = 1;
             pipe.container().set_type(new_user);
-
-            None
         })
         .await
         .deliver();
@@ -71,10 +69,10 @@ struct ValidateUserName;
 // A pipe can specify a parent parameter that is injectable. A tuple can be use when you
 // need to specifiy more arguements like in this case.
 #[fama::async_trait]
-impl fama::FamaPipe<(NewUser, PipeContent)> for ValidateUserName {
+impl fama::FamaPipe<(NewUser, PipeContent), Option<PipeContent>> for ValidateUserName {
     async fn receive_pipe_content(
         &self,
-        (new_user, mut content): (NewUser, PipeContent),
+        (new_user, content): (NewUser, PipeContent),
     ) -> Option<fama::PipeContent> {
         // When the username is "none", stop the flow
         if new_user.username.is_none() {
@@ -88,33 +86,23 @@ impl fama::FamaPipe<(NewUser, PipeContent)> for ValidateUserName {
 
 struct GenerateUserId;
 #[fama::async_trait]
-impl fama::FamaPipe<(NewUser, PipeContent)> for GenerateUserId {
-    async fn receive_pipe_content(
-        &self,
-        (mut new_user, pipe): (NewUser, PipeContent),
-    ) -> Option<fama::PipeContent> {
+impl fama::FamaPipe<(NewUser, PipeContent), ()> for GenerateUserId {
+    async fn receive_pipe_content(&self, (mut new_user, pipe): (NewUser, PipeContent)) {
         if new_user.id.is_none() {
             new_user.id = Some(uuid::Uuid::new_v4().to_string());
             pipe.store(new_user); // Store the changes to the input
         }
-
-        None
     }
 }
 
 struct ApplyDefaultRole;
 
 #[fama::async_trait]
-impl fama::FamaPipe<(NewUser, PipeContent)> for ApplyDefaultRole {
-    async fn receive_pipe_content(
-        &self,
-        (mut new_user, pipe): (NewUser, PipeContent),
-    ) -> Option<PipeContent> {
+impl fama::FamaPipe<(NewUser, PipeContent), ()> for ApplyDefaultRole {
+    async fn receive_pipe_content(&self, (mut new_user, pipe): (NewUser, PipeContent)) {
         if new_user.role.is_none() {
             new_user.role = Some(vec![UserRole::Basic]);
             pipe.store(new_user);
         }
-
-        None
     }
 }

@@ -79,7 +79,7 @@
  #[fama::async_trait]
  impl busybody::Injectable for NewUser {
   async fn inject(c: &busybody::ServiceContainer) -> Self {
-     // get the instace of the type in the current scope or
+     // get the instance of the type in the current scope or
      // create a new instance
      c.proxy_value().unwrap_or_else(|| Self::default())
   }
@@ -98,7 +98,7 @@
 
  // A struct becomes a pipe when it implements "fama::FamaPipe"
  #[fama::async_trait]
- impl fama::FamaPipe<(NewUser, fama::PipeContent)> for ValidateUserName {
+ impl fama::FamaPipe<(NewUser, fama::PipeContent), Option<fama::PipeContent>> for ValidateUserName {
 
    // The only requirement is to implement "receive_pipe_content" method
     async fn receive_pipe_content(&self, (new_user, mut content): (NewUser, fama::PipeContent)) -> Option<fama::PipeContent> {
@@ -116,22 +116,20 @@
  struct GenerateUserId;
 
  #[fama::async_trait]
- impl fama::FamaPipe<(NewUser, fama::PipeContent)> for GenerateUserId {
-     async fn receive_pipe_content(&self, (mut new_user, content): (NewUser,fama::PipeContent)) -> Option<fama::PipeContent> {
-
+ impl fama::FamaPipe<(NewUser, fama::PipeContent), ()> for GenerateUserId {
+     async fn receive_pipe_content(&self, (mut new_user, content): (NewUser,fama::PipeContent)) {
          if new_user.id.is_none() {
              new_user.id = Some(uuid::Uuid::new_v4().to_string()); // Generate and set the ID
              content.store(new_user);
          }
 
-       None
      }
  }
 
  struct ApplyDefaultRole;
 
  #[fama::async_trait]
- impl fama::FamaPipe<(NewUser, fama::PipeContent)> for ApplyDefaultRole {
+ impl fama::FamaPipe<(NewUser, fama::PipeContent), Option<fama::PipeContent>> for ApplyDefaultRole {
      async fn receive_pipe_content(&self, (mut new_user, content): (NewUser,fama::PipeContent)) -> Option<fama::PipeContent> {
 
          if new_user.role.is_none() {
@@ -145,7 +143,7 @@
 
  struct SaveNewUserData;
  #[fama::async_trait]
- impl fama::FamaPipe<(NewUser, fama::PipeContent)> for SaveNewUserData {
+ impl fama::FamaPipe<(NewUser, fama::PipeContent), Option<fama::PipeContent>> for SaveNewUserData {
      async fn receive_pipe_content(&self, (mut new_user, content): (NewUser,fama::PipeContent)) -> Option<fama::PipeContent> {
 
          println!(">> saving new user: {:?}", &new_user);

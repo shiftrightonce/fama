@@ -31,7 +31,7 @@ async fn main() {
         .await
         .through(SaveNewUserData)
         .await
-        .confirm(); // Confirm returns true when the conten flows through all the pipes
+        .confirm(); // Confirm returns true when the content flows through all the pipes
 
     println!("User 2 was created: {:#?}", &created);
 }
@@ -75,10 +75,10 @@ enum UserRole {
 struct ValidateUserName;
 
 #[fama::async_trait]
-impl fama::FamaPipe<(NewUser, PipeContent)> for ValidateUserName {
+impl fama::FamaPipe<(NewUser, PipeContent), Option<PipeContent>> for ValidateUserName {
     async fn receive_pipe_content(
         &self,
-        (new_user, mut content): (NewUser, PipeContent),
+        (new_user, content): (NewUser, PipeContent),
     ) -> Option<PipeContent> {
         // When the username is "none", stop the flow
         if new_user.username.is_none() {
@@ -93,7 +93,7 @@ impl fama::FamaPipe<(NewUser, PipeContent)> for ValidateUserName {
 struct GenerateUserId;
 
 #[fama::async_trait]
-impl fama::FamaPipe<(NewUser, PipeContent)> for GenerateUserId {
+impl fama::FamaPipe<(NewUser, PipeContent), Option<PipeContent>> for GenerateUserId {
     async fn receive_pipe_content(
         &self,
         (mut new_user, content): (NewUser, PipeContent),
@@ -110,7 +110,7 @@ impl fama::FamaPipe<(NewUser, PipeContent)> for GenerateUserId {
 struct ApplyDefaultRole;
 
 #[fama::async_trait]
-impl fama::FamaPipe<(NewUser, PipeContent)> for ApplyDefaultRole {
+impl fama::FamaPipe<(NewUser, PipeContent), Option<PipeContent>> for ApplyDefaultRole {
     async fn receive_pipe_content(
         &self,
         (mut new_user, content): (NewUser, PipeContent),
@@ -126,16 +126,11 @@ impl fama::FamaPipe<(NewUser, PipeContent)> for ApplyDefaultRole {
 
 struct SaveNewUserData;
 #[fama::async_trait]
-impl fama::FamaPipe<(NewUser, PipeContent)> for SaveNewUserData {
-    async fn receive_pipe_content(
-        &self,
-        (mut new_user, content): (NewUser, PipeContent),
-    ) -> Option<PipeContent> {
+impl fama::FamaPipe<(NewUser, PipeContent), ()> for SaveNewUserData {
+    async fn receive_pipe_content(&self, (mut new_user, content): (NewUser, PipeContent)) {
         new_user.internal_id = 1;
 
         println!(">> saving new user: {:?}", &new_user);
         content.store(new_user);
-
-        None
     }
 }
