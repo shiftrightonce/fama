@@ -84,6 +84,62 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         self
     }
 
+    // Stores Option<T> returned by the handler
+    // If option is `none` the pipe flow is stopped
+    pub async fn some_fn<H, Args, O: Clone + Send + Sync + 'static>(mut self, handler: H) -> Self
+    where
+        H: PipeFnHandler<Args, Option<O>>,
+        Args: busybody::Injectable + 'static,
+    {
+        if *self.container.get::<PipeState>().unwrap() == PipeState::Run {
+            let args = Args::inject(&self.container).await;
+            let option = handler.call(args).await;
+
+            if option.is_none() {
+                self.container.set(PipeState::Stop);
+            }
+
+            self.container.set_type(option);
+            self.went_through = true;
+        } else {
+            self.went_through = false;
+        }
+
+        self
+    }
+
+    // Stores Result<T, E> returned by the handler
+    // If result is `err` the pipe flow is stopped
+    pub async fn ok_fn<
+        H,
+        Args,
+        O: Clone + Send + Sync + 'static,
+        E: Clone + Send + Sync + 'static,
+    >(
+        mut self,
+        handler: H,
+    ) -> Self
+    where
+        H: PipeFnHandler<Args, Result<O, E>>,
+        Args: busybody::Injectable + 'static,
+    {
+        if *self.container.get::<PipeState>().unwrap() == PipeState::Run {
+            let args = Args::inject(&self.container).await;
+            let result = handler.call(args).await;
+
+            if result.is_err() {
+                self.container.set(PipeState::Stop);
+            }
+
+            self.container.set_type(result);
+            self.went_through = true;
+        } else {
+            self.went_through = false;
+        }
+
+        self
+    }
+
     /// Accepts an instance of a struct that implements `fama::FamaPipe`
     /// The returned result will be store for the next pipe handlers
     pub async fn through<H, Args, O>(mut self, handler: H) -> Self
@@ -130,6 +186,57 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
             let args = Args::inject(&self.container).await;
             self.container
                 .set_type(handler.receive_pipe_content(args).await);
+            self.went_through = true;
+        } else {
+            self.went_through = false;
+        }
+
+        self
+    }
+
+    // Stores Option<T> returned by the handler
+    // If option is `none` the pipe flow is stopped
+    pub async fn some<H, Args, O: Clone + Send + Sync + 'static>(mut self, handler: H) -> Self
+    where
+        H: FamaPipe<Args, Option<O>>,
+        Args: busybody::Injectable + 'static,
+    {
+        if *self.container.get::<PipeState>().unwrap() == PipeState::Run {
+            let args = Args::inject(&self.container).await;
+            let option = handler.receive_pipe_content(args).await;
+
+            if option.is_none() {
+                self.container.set(PipeState::Stop);
+            }
+
+            self.container.set_type(option);
+            self.went_through = true;
+        } else {
+            self.went_through = false;
+        }
+
+        self
+    }
+
+    // Stores Result<T, E> returned by the handler
+    // If result is `err` the pipe flow is stopped
+    pub async fn ok<H, Args, O: Clone + Send + Sync + 'static, E: Clone + Send + Sync + 'static>(
+        mut self,
+        handler: H,
+    ) -> Self
+    where
+        H: FamaPipe<Args, Result<O, E>>,
+        Args: busybody::Injectable + 'static,
+    {
+        if *self.container.get::<PipeState>().unwrap() == PipeState::Run {
+            let args = Args::inject(&self.container).await;
+            let result = handler.receive_pipe_content(args).await;
+
+            if result.is_err() {
+                self.container.set(PipeState::Stop);
+            }
+
+            self.container.set_type(result);
             self.went_through = true;
         } else {
             self.went_through = false;
@@ -396,6 +503,120 @@ mod test {
             .deliver();
 
         assert_eq!(total, 25);
+    }
+
+    #[tokio::test]
+    async fn test_some_flow_fn() {
+        let result1 = Pipeline::pass(0)
+            .some_fn(|n: i32| async move {
+                if n > 10 {
+                    Some(n)
+                } else {
+                    None
+                }
+            })
+            .await
+            .deliver_as::<Option<i32>>();
+
+        assert_eq!(result1.is_some(), false);
+
+        let result2 = Pipeline::pass(100)
+            .some_fn(|n: i32| async move {
+                if n > 10 {
+                    Some(n)
+                } else {
+                    None
+                }
+            })
+            .await
+            .deliver_as::<Option<i32>>();
+
+        assert_eq!(result2.is_some(), true);
+    }
+
+    #[tokio::test]
+    async fn test_some_flow() {
+        struct SomeI32;
+        #[async_trait::async_trait]
+        impl FamaPipe<i32, Option<i32>> for SomeI32 {
+            async fn receive_pipe_content(&self, n: i32) -> Option<i32> {
+                if n > 10 {
+                    Some(n)
+                } else {
+                    None
+                }
+            }
+        }
+        let result1 = Pipeline::pass(0)
+            .some(SomeI32)
+            .await
+            .deliver_as::<Option<i32>>();
+
+        assert_eq!(result1.is_some(), false);
+
+        let result2 = Pipeline::pass(100)
+            .some(SomeI32)
+            .await
+            .deliver_as::<Option<i32>>();
+
+        assert_eq!(result2.is_some(), true);
+    }
+
+    #[tokio::test]
+    async fn test_result_flow_fn() {
+        let result1 = Pipeline::pass(0)
+            .ok_fn(|n: i32| async move {
+                if n > 10 {
+                    Ok::<i32, ()>(n)
+                } else {
+                    Err(())
+                }
+            })
+            .await
+            .deliver_as::<Result<i32, ()>>();
+
+        assert_eq!(result1.is_err(), true);
+
+        let result2 = Pipeline::pass(100)
+            .ok_fn(|n: i32| async move {
+                if n > 10 {
+                    Ok::<i32, ()>(n)
+                } else {
+                    Err(())
+                }
+            })
+            .await
+            .deliver_as::<Result<i32, ()>>();
+
+        assert_eq!(result2.is_ok(), true);
+    }
+
+    #[tokio::test]
+    async fn test_result_flow() {
+        struct SomeI32;
+        #[async_trait::async_trait]
+        impl FamaPipe<i32, Result<i32, ()>> for SomeI32 {
+            async fn receive_pipe_content(&self, n: i32) -> Result<i32, ()> {
+                if n > 10 {
+                    Ok(n)
+                } else {
+                    Err(())
+                }
+            }
+        }
+        let result1 = Pipeline::pass(0)
+            .ok(SomeI32)
+            .await
+            .deliver_as::<Result<i32, ()>>();
+
+        assert_eq!(result1.is_err(), true);
+
+        let result2 = Pipeline::pass(100)
+            .ok(SomeI32)
+            .await
+            .deliver_as::<Result<i32, ()>>();
+
+        assert_eq!(result2.is_ok(), true);
     }
 
     #[tokio::test]
