@@ -250,6 +250,7 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         self.container.get_type().unwrap()
     }
 
+    /// Returns the passed variable wrapped in an `Option<T>`
     pub fn try_to_deliver(&self) -> Option<T> {
         self.container.get_type()
     }
