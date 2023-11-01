@@ -260,12 +260,15 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         self.container.get_type().unwrap()
     }
 
+    /// Returns a different type that may have been set
+    /// by one of the pipes. The returned type will be wrapped
+    /// in an `Option<T>`
     pub fn try_deliver_as<R: Clone + 'static>(&self) -> Option<R> {
         self.container.get_type()
     }
 
     /// Returns true if the content went through all the registered pipes
-    pub fn confirm(self) -> bool {
+    pub fn confirm(&self) -> bool {
         self.went_through
     }
 }
