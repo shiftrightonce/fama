@@ -160,3 +160,42 @@ pub use pipeline::FamaPipe;
 pub use pipeline::Pipeline;
 
 pub use async_trait::async_trait;
+pub use busybody;
+
+#[async_trait::async_trait]
+pub trait PipelineTrait {
+    type Content: Clone + Send + Sync + 'static;
+
+    async fn handle_pipe(&self, pipeline: Pipeline<Self::Content>) -> Pipeline<Self::Content>;
+
+    async fn deliver(&self, subject: Self::Content) -> Self::Content {
+        let pipeline = Pipeline::pass(subject);
+        self.handle_pipe(pipeline).await.deliver()
+    }
+
+    async fn try_to_deliver(&self, subject: Self::Content) -> Option<Self::Content> {
+        let pipeline = Pipeline::pass(subject);
+        self.handle_pipe(pipeline).await.try_deliver_as()
+    }
+
+    async fn deliver_as<R: Clone + 'static>(&self, subject: Self::Content) -> R
+    where
+        Self: Sized,
+    {
+        let pipeline = Pipeline::pass(subject);
+        self.handle_pipe(pipeline).await.deliver_as()
+    }
+
+    async fn try_deliver_as<R: Clone + 'static>(&self, subject: Self::Content) -> Option<R>
+    where
+        Self: Sized,
+    {
+        let pipeline = Pipeline::pass(subject);
+        self.handle_pipe(pipeline).await.try_deliver_as()
+    }
+
+    async fn confirm(&self, subject: Self::Content) -> bool {
+        let pipeline = Pipeline::pass(subject);
+        self.handle_pipe(pipeline).await.confirm()
+    }
+}
