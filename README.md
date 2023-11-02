@@ -55,7 +55,7 @@
     );
  }
 
- // The content or the pipeline input. Could be any type
+ // The content for the pipeline input. Can be any type
  #[derive(Debug, Clone)]
  struct NewUser {
    internal_id: i32,
@@ -81,7 +81,7 @@
   async fn inject(c: &busybody::ServiceContainer) -> Self {
      // get the instance of the type in the current scope or
      // create a new instance
-     c.proxy_value().unwrap_or_else(|| Self::default())
+     c.get_type().unwrap_or_else(|| Self::default())
   }
  }
 
