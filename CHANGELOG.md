@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.5] - 2024-01-31
+
+[73905a7](73905a7519c1f55d0b618037bc60e213234e01b5)...[9ebf766](9ebf766a5ec9176fd96d6418ba7072114484934f)
+
+### Example
+
+- Update some of the examples ([https://github.com/shiftrightonce/fama/commit/65e59b1](65e59b136cee91c032f3cfcb850e34d5248f44e8))
+
 ## [0.3.4] - 2024-01-31
 
 [512b4b1](512b4b164979d7634eb43729a132c49844214367)...[73905a7](73905a7519c1f55d0b618037bc60e213234e01b5)
