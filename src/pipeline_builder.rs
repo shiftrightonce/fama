@@ -1,104 +1,3 @@
-//! PipelineBuilder provides flexibility and extendibility to your pipelines
-//! Pipes/function can be appended to your type pipeline from other places in your code or even
-//! across crates.
-//!
-//! ```rust
-//!# #![allow(dead_code)]
-//!# use fama::PipelineBuilder;
-//!
-//! #[derive(Default, Clone)]
-//! struct MeaningOfLife(i32);
-//!
-//! #[fama::async_trait]
-//! impl busybody::Injectable for MeaningOfLife {
-//!     async fn inject(container: &busybody::ServiceContainer) -> Self {
-//!        container.get_type().unwrap_or_default()
-//!    }
-//! }
-//!
-//!
-//! #[tokio::main]
-//! async fn main() {
-//!
-//!    let builder = PipelineBuilder::<MeaningOfLife>::new();
-//!
-//!    builder.register(|pipeline| {
-//!       Box::pin(async {
-//!         pipeline.store_fn(|mut instance: MeaningOfLife| async {
-//!             instance.0 = 42;
-//!            instance
-//!         }).await
-//!      })
-//!    }).await;
-//!  
-//!    let life = builder.build(MeaningOfLife::default()).await.deliver();
-//!    assert_eq!(life.0, 42);
-//! }
-//!
-//! ```
-//! You can implement the PipelineBuilderTrait for your type as well
-//!
-//!
-//! ```rust
-//!# #![allow(dead_code)]
-//!# use fama::{PipelineBuilder, PipelineBuilderTrait};
-//!
-//! #[derive(Default, Clone)]
-//! struct MeaningOfLife(i32);
-//!
-//! #[fama::async_trait]
-//! impl busybody::Injectable for MeaningOfLife {
-//!     async fn inject(container: &busybody::ServiceContainer) -> Self {
-//!        container.get_type().unwrap_or_default()
-//!    }
-//! }
-//!
-//! #[fama::async_trait]
-//! impl PipelineBuilderTrait for MeaningOfLife {
-//!
-//!    // we are overriding the default implementation of this method in order
-//!    // to append our pipe
-//!    async fn setup_pipeline_builder(builder: PipelineBuilder<Self>) -> PipelineBuilder<Self> {
-//!       builder.register(|pipeline| {
-//!          Box::pin(async {
-//!               pipeline.store_fn(|mut instance: MeaningOfLife| async {
-//!                    instance.0 = 42;
-//!                    instance
-//!              }).await
-//!          })
-//!        }).await;
-//!
-//!        builder
-//!    }
-//!    
-//! }
-//!
-//!
-//! #[tokio::main]
-//! async fn main() {
-//!
-//!    let new_life = MeaningOfLife(0);
-//!
-//!    // Register/append a pipe/function to the pipeline
-//!    MeaningOfLife::pipeline_builder().await
-//!      .register(|pipeline| {
-//!           Box::pin(async {
-//!              pipeline.store_fn(|mut instance: MeaningOfLife| async {
-//!                  if instance.0 == 0  {
-//!                      instance.0 = 42 ;
-//!                   } else {
-//!                      instance.0 = instance.0 * 2;
-//!                   }
-//!                   instance
-//!              }).await
-//!          })
-//!       }).await;
-//!  
-//!    let life = new_life.pipeline().await.deliver();
-//!    assert_eq!(life.0, 84);
-//! }
-//!
-//! ```
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
@@ -108,6 +7,108 @@ use crate::{pipeline::PipeFnHandler, Pipeline};
 
 type PipeList<T> = Arc<RwLock<Vec<fn(Pipeline<T>) -> BoxFuture<'static, Pipeline<T>>>>>;
 
+/// PipelineBuilder provides flexibility and extendibility to your pipelines
+///
+/// Pipes/function can be appended to your type pipeline from other places in your code or even
+/// across crates.
+///
+/// ```rust
+///# #![allow(dead_code)]
+///# use fama::PipelineBuilder;
+///
+/// #[derive(Default, Clone)]
+/// struct MeaningOfLife(i32);
+///
+/// #[fama::async_trait]
+/// impl busybody::Injectable for MeaningOfLife {
+///     async fn inject(container: &busybody::ServiceContainer) -> Self {
+///        container.get_type().unwrap_or_default()
+///    }
+/// }
+///
+///
+/// #[tokio::main]
+/// async fn main() {
+///
+///    let builder = PipelineBuilder::<MeaningOfLife>::new();
+///
+///    builder.register(|pipeline| {
+///       Box::pin(async {
+///         pipeline.store_fn(|mut instance: MeaningOfLife| async {
+///             instance.0 = 42;
+///            instance
+///         }).await
+///      })
+///    }).await;
+///  
+///    let life = builder.build(MeaningOfLife::default()).await.deliver();
+///    assert_eq!(life.0, 42);
+/// }
+///
+/// ```
+/// You can implement the PipelineBuilderTrait for your type as well
+///
+///
+/// ```rust
+///# #![allow(dead_code)]
+///# use fama::{PipelineBuilder, PipelineBuilderTrait};
+///
+/// #[derive(Default, Clone)]
+/// struct MeaningOfLife(i32);
+///
+/// #[fama::async_trait]
+/// impl busybody::Injectable for MeaningOfLife {
+///     async fn inject(container: &busybody::ServiceContainer) -> Self {
+///        container.get_type().unwrap_or_default()
+///    }
+/// }
+///
+/// #[fama::async_trait]
+/// impl PipelineBuilderTrait for MeaningOfLife {
+///
+///    // we are overriding the default implementation of this method in order
+///    // to append our pipe
+///    async fn setup_pipeline_builder(builder: PipelineBuilder<Self>) -> PipelineBuilder<Self> {
+///       builder.register(|pipeline| {
+///          Box::pin(async {
+///               pipeline.store_fn(|mut instance: MeaningOfLife| async {
+///                    instance.0 = 42;
+///                    instance
+///              }).await
+///          })
+///        }).await;
+///
+///        builder
+///    }
+///    
+/// }
+///
+///
+/// #[tokio::main]
+/// async fn main() {
+///
+///    let new_life = MeaningOfLife(0);
+///
+///    // Register/append a pipe/function to the pipeline
+///    MeaningOfLife::pipeline_builder().await
+///      .register(|pipeline| {
+///           Box::pin(async {
+///              pipeline.store_fn(|mut instance: MeaningOfLife| async {
+///                  if instance.0 == 0  {
+///                      instance.0 = 42 ;
+///                   } else {
+///                      instance.0 = instance.0 * 2;
+///                   }
+///                   instance
+///              }).await
+///          })
+///       }).await;
+///  
+///    let life = new_life.pipeline().await.deliver();
+///    assert_eq!(life.0, 84);
+/// }
+///
+/// ```
 #[derive(Clone)]
 pub struct PipelineBuilder<T: Clone + Send + Sync + 'static> {
     pipes: PipeList<T>,
