@@ -154,6 +154,7 @@
 //!
 mod content;
 mod pipeline;
+mod pipeline_builder;
 
 pub use content::PipeContent;
 pub use pipeline::FamaPipe;
@@ -161,6 +162,8 @@ pub use pipeline::Pipeline;
 
 pub use async_trait::async_trait;
 pub use busybody;
+pub use pipeline_builder::PipelineBuilder;
+pub use pipeline_builder::PipelineBuilderTrait;
 
 #[async_trait::async_trait]
 pub trait PipelineTrait {
