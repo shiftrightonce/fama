@@ -3,6 +3,7 @@
 #[tokio::main]
 async fn main() {
     let pipeline = fama::Pipeline::pass(0).some(Adder).await;
+    // None will be returned if the requested is not in the container
     println!("result 1: {:#?}", pipeline.deliver_as::<Option<i32>>());
 
     let pipeline = fama::Pipeline::pass(10).some(Adder).await;

@@ -46,6 +46,7 @@ async fn main() {
         .await
         .through_fn(|c: i32, pipe: PipeContent| async move {
             // Change counter to a string
+            // the container now has an i32 and string with the value 1040
             pipe.container().set_type(c.to_string());
             Some(pipe)
         })

@@ -15,15 +15,19 @@ async fn main() {
         .through_fn(|config: Config, count: i32| async move {
             // there is an instance of an I32 type in this pipeline scope.
             // The value that was "pass".
-            dbg!(count);
+            println!("count value: {count}");
 
             // This  instance of config will have the value 250
-            dbg!(config);
+            println!("pipe 'local' config: {:#?}", config);
         })
         .await
         .deliver(); // Start of the pipeline
 
     println!("score: {:#?}", score);
+    println!(
+        "'global' config value: {:#?}",
+        service_container().get_type::<Config>().unwrap()
+    );
 }
 
 #[derive(Debug, Clone)]

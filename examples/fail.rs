@@ -50,7 +50,7 @@ impl Default for NewUser {
 #[fama::async_trait]
 impl busybody::Injectable for NewUser {
     async fn inject(c: &busybody::ServiceContainer) -> Self {
-        c.proxy_value().unwrap_or_else(|| Self::default())
+        c.get_type().unwrap_or_default() // the type implements default...
     }
 }
 

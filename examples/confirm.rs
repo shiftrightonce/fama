@@ -17,7 +17,7 @@ async fn main() {
     .await
     .through(SaveNewUserData)
     .await
-    .confirm(); // Confirm returns true when the conten flows through all the pipes
+    .confirm(); // Confirm returns true when the content flows through all the pipes
 
     println!("User 1 was created: {:#?}", &created);
     println!("-----------------------------------------");
@@ -60,7 +60,7 @@ impl Default for NewUser {
 #[fama::async_trait]
 impl busybody::Injectable for NewUser {
     async fn inject(c: &busybody::ServiceContainer) -> Self {
-        c.proxy_value().unwrap_or_else(|| Self::default())
+        c.get_type().unwrap_or_default()
     }
 }
 
@@ -74,6 +74,7 @@ enum UserRole {
 
 struct ValidateUserName;
 
+// A struct that can be used as a pipe must implement "fama::FamaPipe"
 #[fama::async_trait]
 impl fama::FamaPipe<(NewUser, PipeContent), Option<PipeContent>> for ValidateUserName {
     async fn receive_pipe_content(
