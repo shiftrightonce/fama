@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.7] - 2025-02-08
+
+[9ebf766](9ebf766a5ec9176fd96d6418ba7072114484934f)...[17c3c39](17c3c399a3e17ea23cc30a4c502b3b0369296575)
+
+### Bug Fixes
+
+- Updated dependencies ([https://github.com/shiftrightonce/fama/commit/249953c](249953c5f41d7d7a07a5beedfbff14c49e6374af))
+
 ## [0.3.5] - 2024-01-31
 
 [73905a7](73905a7519c1f55d0b618037bc60e213234e01b5)...[9ebf766](9ebf766a5ec9176fd96d6418ba7072114484934f)
