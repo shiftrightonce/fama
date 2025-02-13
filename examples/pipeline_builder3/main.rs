@@ -32,7 +32,8 @@ async fn main() {
         .await
         .build(user) // Calling build on the builder will start the flow/process
         .await
-        .deliver();
+        .deliver()
+        .await;
 
     println!("user one created: {:#?}", user);
 
@@ -40,6 +41,6 @@ async fn main() {
     let mut second_user = crate_a::CreateUser::default();
     second_user.add_role("General Manager");
 
-    let user = second_user.pipeline().await.deliver();
+    let user = second_user.pipeline().await.deliver().await;
     println!("user two created: {:#?}", user);
 }

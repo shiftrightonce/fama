@@ -21,7 +21,7 @@ impl CreateUser {
 #[busybody::async_trait]
 impl busybody::Injectable for CreateUser {
     async fn inject(container: &busybody::ServiceContainer) -> Self {
-        container.get_type().unwrap_or_default()
+        container.get_type().await.unwrap_or_default()
     }
 }
 

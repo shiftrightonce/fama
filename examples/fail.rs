@@ -5,6 +5,7 @@ use fama::PipeContent;
 async fn main() {
     // 1. Create a pipeline
     let new_user = fama::Pipeline::pass(NewUser::default()) // Start of the pipeline
+        .await
         .through(ValidateUserName) // pipe
         .await
         .through(GenerateUserId) // pipe
@@ -16,10 +17,11 @@ async fn main() {
             println!(">> saving new user: {:?}", &new_user);
 
             new_user.internal_id = 1;
-            pipe.container().set_type(new_user);
+            pipe.container().set_type(new_user).await;
         })
         .await
-        .deliver();
+        .deliver()
+        .await;
 
     println!("fails validation: {:#?}", &new_user); // The flow is stopped by the "ValidateUserName" pipe because the user does not have a "username"
 }
@@ -50,7 +52,7 @@ impl Default for NewUser {
 #[fama::async_trait]
 impl busybody::Injectable for NewUser {
     async fn inject(c: &busybody::ServiceContainer) -> Self {
-        c.get_type().unwrap_or_default() // the type implements default...
+        c.get_type().await.unwrap_or_default() // the type implements default...
     }
 }
 
@@ -77,7 +79,7 @@ impl fama::FamaPipe<(NewUser, PipeContent), Option<PipeContent>> for ValidateUse
         // When the username is "none", stop the flow
         if new_user.username.is_none() {
             println!("User name cannot be empty");
-            content.stop_the_flow(); // notify the pipeline to stop flowing.
+            content.stop_the_flow().await; // notify the pipeline to stop flowing.
         }
 
         Some(content)
@@ -90,7 +92,7 @@ impl fama::FamaPipe<(NewUser, PipeContent), ()> for GenerateUserId {
     async fn receive_pipe_content(&self, (mut new_user, pipe): (NewUser, PipeContent)) {
         if new_user.id.is_none() {
             new_user.id = Some(uuid::Uuid::new_v4().to_string());
-            pipe.store(new_user); // Store the changes to the input
+            pipe.store(new_user).await; // Store the changes to the input
         }
     }
 }
@@ -102,7 +104,7 @@ impl fama::FamaPipe<(NewUser, PipeContent), ()> for ApplyDefaultRole {
     async fn receive_pipe_content(&self, (mut new_user, pipe): (NewUser, PipeContent)) {
         if new_user.role.is_none() {
             new_user.role = Some(vec![UserRole::Basic]);
-            pipe.store(new_user);
+            pipe.store(new_user).await;
         }
     }
 }

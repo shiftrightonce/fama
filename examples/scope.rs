@@ -4,12 +4,13 @@ use fama::PipeContent;
 
 #[tokio::main]
 async fn main() {
-    service_container().set_type(Config(100)); // Config in the "global" scope has the value 100
+    service_container().set_type(Config(100)).await; // Config in the "global" scope has the value 100
 
     // 1. Create a pipeline
     let score = fama::Pipeline::pass(500)
+        .await
         .through_fn(|content: PipeContent| async move {
-            content.container().set_type(Config(250)); // In this pipeline scope, the instance of config has the value 250
+            content.container().set_type(Config(250)).await; // In this pipeline scope, the instance of config has the value 250
         })
         .await
         .through_fn(|config: Config, count: i32| async move {
@@ -21,12 +22,13 @@ async fn main() {
             println!("pipe 'local' config: {:#?}", config);
         })
         .await
-        .deliver(); // Start of the pipeline
+        .deliver()
+        .await; // Start of the pipeline
 
     println!("score: {:#?}", score);
     println!(
         "'global' config value: {:#?}",
-        service_container().get_type::<Config>().unwrap()
+        service_container().get_type::<Config>().await.unwrap()
     );
 }
 
@@ -42,6 +44,6 @@ impl Default for Config {
 #[busybody::async_trait]
 impl busybody::Injectable for Config {
     async fn inject(c: &ServiceContainer) -> Self {
-        c.proxy_value().unwrap_or_default()
+        c.proxy_value().await.unwrap_or_default()
     }
 }

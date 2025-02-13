@@ -9,6 +9,7 @@ async fn main() {
         username: Some("james".into()),
         ..NewUser::default()
     }) // Start of the pipeline
+    .await
     .through(ValidateUserName) // pipe
     .await
     .through(GenerateUserId) // pipe
@@ -23,6 +24,7 @@ async fn main() {
     println!("-----------------------------------------");
 
     let created = fama::Pipeline::pass(NewUser::default()) // Start of the pipeline
+        .await
         .through(ValidateUserName) // pipe
         .await
         .through(GenerateUserId) // pipe
@@ -60,7 +62,7 @@ impl Default for NewUser {
 #[fama::async_trait]
 impl busybody::Injectable for NewUser {
     async fn inject(c: &busybody::ServiceContainer) -> Self {
-        c.get_type().unwrap_or_default()
+        c.get_type().await.unwrap_or_default()
     }
 }
 
@@ -84,7 +86,7 @@ impl fama::FamaPipe<(NewUser, PipeContent), Option<PipeContent>> for ValidateUse
         // When the username is "none", stop the flow
         if new_user.username.is_none() {
             println!("User name cannot be empty");
-            content.stop_the_flow(); // notify the pipeline to stop flowing.
+            content.stop_the_flow().await; // notify the pipeline to stop flowing.
         }
 
         Some(content)
@@ -101,7 +103,7 @@ impl fama::FamaPipe<(NewUser, PipeContent), Option<PipeContent>> for GenerateUse
     ) -> Option<PipeContent> {
         if new_user.id.is_none() {
             new_user.id = Some(uuid::Uuid::new_v4().to_string());
-            content.store(new_user);
+            content.store(new_user).await;
         }
 
         Some(content)
@@ -118,7 +120,7 @@ impl fama::FamaPipe<(NewUser, PipeContent), Option<PipeContent>> for ApplyDefaul
     ) -> Option<PipeContent> {
         if new_user.role.is_none() {
             new_user.role = Some(vec![UserRole::Basic]);
-            content.store(new_user);
+            content.store(new_user).await;
         }
 
         Some(content)
@@ -132,6 +134,6 @@ impl fama::FamaPipe<(NewUser, PipeContent), ()> for SaveNewUserData {
         new_user.internal_id = 1;
 
         println!(">> saving new user: {:?}", &new_user);
-        content.store(new_user);
+        content.store(new_user).await;
     }
 }

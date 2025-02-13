@@ -9,6 +9,7 @@ async fn main() {
         username: Some("james".into()),
         ..NewUser::default()
     }) // Start of the pipeline
+    .await
     // Use "through_fn" in order to add a function or closure as a pipe
     .through_fn(validate_user)
     .await
@@ -16,7 +17,7 @@ async fn main() {
     .through_fn(|mut new_user: NewUser, content: PipeContent| async move {
         if new_user.id.is_none() {
             new_user.id = Some(uuid::Uuid::new_v4().to_string());
-            content.store(new_user);
+            content.store(new_user).await;
         }
         true
     })
@@ -54,7 +55,7 @@ impl Default for NewUser {
 #[fama::async_trait]
 impl busybody::Injectable for NewUser {
     async fn inject(c: &busybody::ServiceContainer) -> Self {
-        c.get_type().unwrap_or_default()
+        c.get_type().await.unwrap_or_default()
     }
 }
 
@@ -70,7 +71,7 @@ async fn validate_user(new_user: NewUser, pipe: PipeContent) -> Option<PipeConte
     // When the username is "none", stop the flow
     if new_user.username.is_none() {
         println!("User name cannot be empty");
-        pipe.stop_the_flow();
+        pipe.stop_the_flow().await;
     }
 
     Some(pipe)
@@ -83,7 +84,7 @@ impl fama::FamaPipe<(NewUser, PipeContent), ()> for ApplyDefaultRole {
     async fn receive_pipe_content(&self, (mut new_user, pipe): (NewUser, PipeContent)) {
         if new_user.role.is_none() {
             new_user.role = Some(vec![UserRole::Basic]);
-            pipe.store(new_user);
+            pipe.store(new_user).await;
         }
     }
 }
@@ -95,6 +96,6 @@ impl fama::FamaPipe<(NewUser, PipeContent), ()> for SaveNewUserData {
         new_user.internal_id = 1;
 
         println!(">> saving new user: {:?}", &new_user);
-        content.store(new_user);
+        content.store(new_user).await;
     }
 }

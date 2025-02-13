@@ -2,11 +2,17 @@
 
 #[tokio::main]
 async fn main() {
-    let pipeline = fama::Pipeline::pass(0).ok(Adder).await;
-    println!("result 1: {:#?}", pipeline.deliver_as::<Result<i32, ()>>());
+    let pipeline = fama::Pipeline::pass(0).await.ok(Adder).await;
+    println!(
+        "result 1: {:#?}",
+        pipeline.deliver_as::<Result<i32, ()>>().await
+    );
 
-    let pipeline = fama::Pipeline::pass(10).ok(Adder).await;
-    println!("result 2: {:#?}", pipeline.deliver_as::<Result<i32, ()>>());
+    let pipeline = fama::Pipeline::pass(10).await.ok(Adder).await;
+    println!(
+        "result 2: {:#?}",
+        pipeline.deliver_as::<Result<i32, ()>>().await
+    );
 }
 
 struct Adder;

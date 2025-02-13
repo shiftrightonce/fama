@@ -42,7 +42,7 @@ struct ProductSKU(String);
 #[fama::async_trait]
 impl busybody::Injectable for ProductSKU {
     async fn inject(container: &fama::busybody::ServiceContainer) -> Self {
-        container.get_type().unwrap()
+        container.get_type().await.unwrap()
     }
 }
 
