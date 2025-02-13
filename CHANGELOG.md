@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2025-02-13
+
+[17c3c39](17c3c399a3e17ea23cc30a4c502b3b0369296575)...[84ea402](84ea40241feb8c355fb5b4b771869b735badda94)
+
+### Features
+
+- [**breaking**] Made the crate fully async ([https://github.com/shiftrightonce/fama/commit/455010c](455010c11d88a83ce1f4eec650eca0f73c810236))
+
+### Example
+
+- Update examples to by fully async ([https://github.com/shiftrightonce/fama/commit/ecc37e5](ecc37e562f60807d2d1919e5e78d4adcb99c2158))
+
 ## [0.3.7] - 2025-02-08
 
 [9ebf766](9ebf766a5ec9176fd96d6418ba7072114484934f)...[17c3c39](17c3c399a3e17ea23cc30a4c502b3b0369296575)
