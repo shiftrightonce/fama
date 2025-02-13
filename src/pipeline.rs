@@ -12,23 +12,11 @@ pub struct Pipeline<T: Send + Sync + 'static> {
     went_through: bool,
 }
 
-impl<T: Send + Sync + 'static> Default for Pipeline<T> {
-    fn default() -> Self {
-        let pipe_content = PipeContent::default();
-
-        Self {
-            pipe_content,
-            phantom: PhantomData,
-            went_through: false,
-        }
-    }
-}
-
 impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     /// Accepts the pipeline content/input.
     /// This is the beginning of the pipeline
-    pub fn pass(content: T) -> Self {
-        let pipe_content = PipeContent::new(content);
+    pub async fn pass(content: T) -> Self {
+        let pipe_content = PipeContent::new(content).await;
 
         Self {
             pipe_content,
@@ -37,8 +25,8 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         }
     }
 
-    pub fn pass_content(self, content: T) -> Self {
-        self.container().set_type(content);
+    pub async fn pass_content(self, content: T) -> Self {
+        self.container().set_type(content).await;
         self
     }
 
@@ -51,7 +39,7 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         H: PipeFnHandler<Args, O>,
         Args: busybody::Injectable + 'static,
     {
-        if *self.container().get::<PipeState>().unwrap() == PipeState::Run {
+        if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
             let args = Args::inject(self.container()).await;
             handler.pipe_fn_handle(args).await;
             self.went_through = true;
@@ -72,10 +60,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         H: PipeFnHandler<Args, bool>,
         Args: busybody::Injectable + 'static,
     {
-        if *self.container().get::<PipeState>().unwrap() == PipeState::Run {
+        if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
             let args = Args::inject(self.container()).await;
             if !handler.pipe_fn_handle(args).await {
-                self.container().set(PipeState::Stop);
+                self.container().set(PipeState::Stop).await;
             }
             self.went_through = true;
         } else {
@@ -91,10 +79,11 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         H: PipeFnHandler<Args, O>,
         Args: busybody::Injectable + 'static,
     {
-        if *self.container().get::<PipeState>().unwrap() == PipeState::Run {
+        if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
             let args = Args::inject(self.container()).await;
             self.container()
-                .set_type(handler.pipe_fn_handle(args).await);
+                .set_type(handler.pipe_fn_handle(args).await)
+                .await;
             self.went_through = true;
         } else {
             self.went_through = false;
@@ -110,15 +99,15 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         H: PipeFnHandler<Args, Option<O>>,
         Args: busybody::Injectable + 'static,
     {
-        if *self.container().get::<PipeState>().unwrap() == PipeState::Run {
+        if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
             let args = Args::inject(self.container()).await;
             let option = handler.pipe_fn_handle(args).await;
 
             if option.is_none() {
-                self.container().set(PipeState::Stop);
+                self.container().set(PipeState::Stop).await;
             }
 
-            self.container().set_type(option);
+            self.container().set_type(option).await;
             self.went_through = true;
         } else {
             self.went_through = false;
@@ -142,15 +131,15 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         H: PipeFnHandler<Args, Result<O, E>>,
         Args: busybody::Injectable + 'static,
     {
-        if *self.container().get::<PipeState>().unwrap() == PipeState::Run {
+        if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
             let args = Args::inject(self.container()).await;
             let result = handler.pipe_fn_handle(args).await;
 
             if result.is_err() {
-                self.container().set(PipeState::Stop);
+                self.container().set(PipeState::Stop).await;
             }
 
-            self.container().set_type(result);
+            self.container().set_type(result).await;
             self.went_through = true;
         } else {
             self.went_through = false;
@@ -166,7 +155,7 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         H: FamaPipe<Args, O>,
         Args: busybody::Injectable + 'static,
     {
-        if *self.container().get::<PipeState>().unwrap() == PipeState::Run {
+        if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
             let args = Args::inject(self.container()).await;
             handler.receive_pipe_content(args).await;
             self.went_through = true;
@@ -184,10 +173,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         H: FamaPipe<Args, bool>,
         Args: busybody::Injectable + 'static,
     {
-        if *self.container().get::<PipeState>().unwrap() == PipeState::Run {
+        if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
             let args = Args::inject(self.container()).await;
             if !handler.receive_pipe_content(args).await {
-                self.container().set(PipeState::Stop);
+                self.container().set(PipeState::Stop).await;
             }
             self.went_through = true;
         } else {
@@ -201,10 +190,11 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         H: FamaPipe<Args, O>,
         Args: busybody::Injectable + 'static,
     {
-        if *self.container().get::<PipeState>().unwrap() == PipeState::Run {
+        if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
             let args = Args::inject(self.container()).await;
             self.container()
-                .set_type(handler.receive_pipe_content(args).await);
+                .set_type(handler.receive_pipe_content(args).await)
+                .await;
             self.went_through = true;
         } else {
             self.went_through = false;
@@ -220,15 +210,15 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         H: FamaPipe<Args, Option<O>>,
         Args: busybody::Injectable + 'static,
     {
-        if *self.container().get::<PipeState>().unwrap() == PipeState::Run {
+        if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
             let args = Args::inject(self.container()).await;
             let option = handler.receive_pipe_content(args).await;
 
             if option.is_none() {
-                self.container().set(PipeState::Stop);
+                self.container().set(PipeState::Stop).await;
             }
 
-            self.container().set_type(option);
+            self.container().set_type(option).await;
             self.went_through = true;
         } else {
             self.went_through = false;
@@ -247,15 +237,15 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         H: FamaPipe<Args, Result<O, E>>,
         Args: busybody::Injectable + 'static,
     {
-        if *self.container().get::<PipeState>().unwrap() == PipeState::Run {
+        if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
             let args = Args::inject(self.container()).await;
             let result = handler.receive_pipe_content(args).await;
 
             if result.is_err() {
-                self.container().set(PipeState::Stop);
+                self.container().set(PipeState::Stop).await;
             }
 
-            self.container().set_type(result);
+            self.container().set_type(result).await;
             self.went_through = true;
         } else {
             self.went_through = false;
@@ -265,26 +255,26 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     }
 
     /// Returns the passed variable
-    pub fn deliver(&self) -> T {
-        self.try_to_deliver().unwrap()
+    pub async fn deliver(&self) -> T {
+        self.try_to_deliver().await.unwrap()
     }
 
     /// Returns the passed variable wrapped in an `Option<T>`
-    pub fn try_to_deliver(&self) -> Option<T> {
-        self.container().get_type()
+    pub async fn try_to_deliver(&self) -> Option<T> {
+        self.container().get_type().await
     }
 
     /// Returns a different type that may have been set
     /// by one of the pipes
-    pub fn deliver_as<R: Clone + 'static>(&self) -> R {
-        self.try_deliver_as().unwrap()
+    pub async fn deliver_as<R: Clone + 'static>(&self) -> R {
+        self.try_deliver_as().await.unwrap()
     }
 
     /// Returns a different type that may have been set
     /// by one of the pipes. The returned type will be wrapped
     /// in an `Option<T>`
-    pub fn try_deliver_as<R: Clone + 'static>(&self) -> Option<R> {
-        self.container().get_type()
+    pub async fn try_deliver_as<R: Clone + 'static>(&self) -> Option<R> {
+        self.container().get_type().await
     }
 
     /// Returns true if the content went through all the registered pipes
@@ -396,7 +386,7 @@ mod test {
     #[async_trait]
     impl FamaPipe<(i32, PipeContent), ()> for StoreAddOne {
         async fn receive_pipe_content(&self, (num, pipe): (i32, PipeContent)) {
-            pipe.store(num + 1);
+            pipe.store(num + 1).await;
         }
     }
 
@@ -404,7 +394,7 @@ mod test {
     #[async_trait]
     impl FamaPipe<(i32, PipeContent), ()> for StoreAddTwo {
         async fn receive_pipe_content(&self, (num, pipe): (i32, PipeContent)) {
-            pipe.store(num + 2);
+            pipe.store(num + 2).await;
         }
     }
 
@@ -419,6 +409,7 @@ mod test {
     #[tokio::test]
     async fn test_through() {
         let result = Pipeline::pass(0)
+            .await
             .through(StoreAddOne)
             .await
             .through(StoreAddOne)
@@ -427,7 +418,8 @@ mod test {
             .await
             .through(StoreAddTwo)
             .await
-            .deliver();
+            .deliver()
+            .await;
 
         assert_eq!(result, 6);
     }
@@ -435,6 +427,7 @@ mod test {
     #[tokio::test]
     async fn test_store() {
         let result = Pipeline::pass(0)
+            .await
             .store(AddOne)
             .await
             .store(AddOne)
@@ -443,7 +436,8 @@ mod test {
             .await
             .store(AddTwo)
             .await
-            .deliver();
+            .deliver()
+            .await;
 
         assert_eq!(result, 6);
     }
@@ -451,6 +445,7 @@ mod test {
     #[tokio::test]
     async fn test_next() {
         let result = Pipeline::pass(0)
+            .await
             .store(AddOne)
             .await
             .store(AddOne)
@@ -461,11 +456,13 @@ mod test {
             .await
             .store(AddTwo)
             .await
-            .deliver();
+            .deliver()
+            .await;
 
         assert_eq!(result, 4);
 
         let result = Pipeline::pass(0)
+            .await
             .store(AddOne)
             .await
             .store(AddOne)
@@ -480,7 +477,8 @@ mod test {
             .await
             .store(AddTwo)
             .await
-            .deliver();
+            .deliver()
+            .await;
 
         assert_eq!(result, 10);
     }
@@ -488,15 +486,17 @@ mod test {
     #[tokio::test]
     async fn test_through_fn1() {
         let result: bool = Pipeline::pass(33)
+            .await
             .through_fn(|num: i32, pipe: PipeContent| async move {
-                pipe.store(num + 2);
+                pipe.store(num + 2).await;
             })
             .await
             .through_fn(|num: i32, pipe: PipeContent| async move {
-                pipe.store(num == 35);
+                pipe.store(num == 35).await;
             })
             .await
-            .deliver_as();
+            .deliver_as()
+            .await;
 
         assert_eq!(result, true);
     }
@@ -504,8 +504,9 @@ mod test {
     #[tokio::test]
     async fn test_next_fn() {
         let result: bool = Pipeline::pass(33)
+            .await
             .next_fn(|num: i32, pipe: PipeContent| async move {
-                pipe.store(num + 2);
+                pipe.store(num + 2).await;
                 true
             })
             .await
@@ -521,29 +522,31 @@ mod test {
     #[tokio::test]
     async fn test_store_fn() {
         let total = Pipeline::pass(0)
+            .await
             .store_fn(|num: i32| async move { num + 1 })
             .await
             .store_fn(|num: i32| async move { num + 4 })
             .await
             .store_fn(|num: i32| async move { num * 5 })
             .await
-            .deliver();
+            .deliver()
+            .await;
 
         assert_eq!(total, 25);
     }
 
     #[tokio::test]
     async fn test_store2_fn() {
-        let pipe = Pipeline::<i32>::default();
-        let total = pipe
-            .pass_content(0)
+        let total = Pipeline::<i32>::pass(0)
+            .await
             .store_fn(|num: i32| async move { num + 1 })
             .await
             .store_fn(|num: i32| async move { num + 4 })
             .await
             .store_fn(|num: i32| async move { num * 5 })
             .await
-            .deliver();
+            .deliver()
+            .await;
 
         assert_eq!(total, 25);
     }
@@ -551,6 +554,7 @@ mod test {
     #[tokio::test]
     async fn test_some_flow_fn() {
         let result1 = Pipeline::pass(0)
+            .await
             .some_fn(|n: i32| async move {
                 if n > 10 {
                     Some(n)
@@ -559,11 +563,13 @@ mod test {
                 }
             })
             .await
-            .deliver_as::<Option<i32>>();
+            .deliver_as::<Option<i32>>()
+            .await;
 
         assert_eq!(result1.is_some(), false);
 
         let result2 = Pipeline::pass(100)
+            .await
             .some_fn(|n: i32| async move {
                 if n > 10 {
                     Some(n)
@@ -572,7 +578,8 @@ mod test {
                 }
             })
             .await
-            .deliver_as::<Option<i32>>();
+            .deliver_as::<Option<i32>>()
+            .await;
 
         assert_eq!(result2.is_some(), true);
     }
@@ -591,16 +598,20 @@ mod test {
             }
         }
         let result1 = Pipeline::pass(0)
+            .await
             .some(SomeI32)
             .await
-            .deliver_as::<Option<i32>>();
+            .deliver_as::<Option<i32>>()
+            .await;
 
         assert_eq!(result1.is_some(), false);
 
         let result2 = Pipeline::pass(100)
+            .await
             .some(SomeI32)
             .await
-            .deliver_as::<Option<i32>>();
+            .deliver_as::<Option<i32>>()
+            .await;
 
         assert_eq!(result2.is_some(), true);
     }
@@ -608,6 +619,7 @@ mod test {
     #[tokio::test]
     async fn test_result_flow_fn() {
         let result1 = Pipeline::pass(0)
+            .await
             .ok_fn(|n: i32| async move {
                 if n > 10 {
                     Ok::<i32, ()>(n)
@@ -616,11 +628,13 @@ mod test {
                 }
             })
             .await
-            .deliver_as::<Result<i32, ()>>();
+            .deliver_as::<Result<i32, ()>>()
+            .await;
 
         assert_eq!(result1.is_err(), true);
 
         let result2 = Pipeline::pass(100)
+            .await
             .ok_fn(|n: i32| async move {
                 if n > 10 {
                     Ok::<i32, ()>(n)
@@ -629,7 +643,8 @@ mod test {
                 }
             })
             .await
-            .deliver_as::<Result<i32, ()>>();
+            .deliver_as::<Result<i32, ()>>()
+            .await;
 
         assert_eq!(result2.is_ok(), true);
     }
@@ -648,16 +663,20 @@ mod test {
             }
         }
         let result1 = Pipeline::pass(0)
+            .await
             .ok(SomeI32)
             .await
-            .deliver_as::<Result<i32, ()>>();
+            .deliver_as::<Result<i32, ()>>()
+            .await;
 
         assert_eq!(result1.is_err(), true);
 
         let result2 = Pipeline::pass(100)
+            .await
             .ok(SomeI32)
             .await
-            .deliver_as::<Result<i32, ()>>();
+            .deliver_as::<Result<i32, ()>>()
+            .await;
 
         assert_eq!(result2.is_ok(), true);
     }
@@ -665,6 +684,7 @@ mod test {
     #[tokio::test]
     async fn test_deliver_as() {
         let result: bool = Pipeline::pass(0)
+            .await
             .store_fn(|num: i32| async move { num + 1 })
             .await
             .store_fn(|num: i32| async move { num + 4 })
@@ -673,7 +693,8 @@ mod test {
             .await
             .store_fn(|num: i32| async move { num == 25 })
             .await
-            .deliver_as();
+            .deliver_as()
+            .await;
 
         assert_eq!(result, true);
     }

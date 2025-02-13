@@ -22,7 +22,7 @@ type PipeList<T> = Arc<RwLock<Vec<fn(Pipeline<T>) -> BoxFuture<'static, Pipeline
 /// #[fama::async_trait]
 /// impl busybody::Injectable for MeaningOfLife {
 ///     async fn inject(container: &busybody::ServiceContainer) -> Self {
-///        container.get_type().unwrap_or_default()
+///        container.get_type().await.unwrap_or_default()
 ///    }
 /// }
 ///
@@ -41,7 +41,7 @@ type PipeList<T> = Arc<RwLock<Vec<fn(Pipeline<T>) -> BoxFuture<'static, Pipeline
 ///      })
 ///    }).await;
 ///  
-///    let life = builder.build(MeaningOfLife::default()).await.deliver();
+///    let life = builder.build(MeaningOfLife::default()).await.deliver().await;
 ///    assert_eq!(life.0, 42);
 /// }
 ///
@@ -59,7 +59,7 @@ type PipeList<T> = Arc<RwLock<Vec<fn(Pipeline<T>) -> BoxFuture<'static, Pipeline
 /// #[fama::async_trait]
 /// impl busybody::Injectable for MeaningOfLife {
 ///     async fn inject(container: &busybody::ServiceContainer) -> Self {
-///        container.get_type().unwrap_or_default()
+///        container.get_type().await.unwrap_or_default()
 ///    }
 /// }
 ///
@@ -104,7 +104,7 @@ type PipeList<T> = Arc<RwLock<Vec<fn(Pipeline<T>) -> BoxFuture<'static, Pipeline
 ///          })
 ///       }).await;
 ///  
-///    let life = new_life.pipeline().await.deliver();
+///    let life = new_life.pipeline().await.deliver().await;
 ///    assert_eq!(life.0, 84);
 /// }
 ///
@@ -119,14 +119,19 @@ impl<T: Clone + Send + Sync + 'static> PipelineBuilder<T> {
         futures::executor::block_on(busybody::helpers::get_type_or_inject())
     }
 
-    pub fn initial() -> (bool, Self) {
-        if let Some(instance) = busybody::helpers::service_container().get_type::<Self>() {
+    pub async fn initial() -> (bool, Self) {
+        if let Some(instance) = busybody::helpers::service_container()
+            .get_type::<Self>()
+            .await
+        {
             (false, instance)
         } else {
             let instance = Self {
                 pipes: Arc::default(),
             };
-            busybody::helpers::service_container().set_type(instance.clone());
+            busybody::helpers::service_container()
+                .set_type(instance.clone())
+                .await;
             (true, instance)
         }
     }
@@ -142,7 +147,7 @@ impl<T: Clone + Send + Sync + 'static> PipelineBuilder<T> {
     }
 
     pub async fn build(&self, content: T) -> Pipeline<T> {
-        let mut pipeline = Pipeline::pass(content);
+        let mut pipeline = Pipeline::pass(content).await;
         let lock = self.pipes.read().await;
         for pipe in lock.iter() {
             pipeline = pipe.pipe_fn_handle((pipeline,)).await;
@@ -177,7 +182,7 @@ pub trait PipelineBuilderTrait: Clone + Send + Sync {
 
     /// Returns the pipe builder instance for this type
     async fn pipeline_builder() -> PipelineBuilder<Self> {
-        let (is_initial, builder) = PipelineBuilder::<Self>::initial();
+        let (is_initial, builder) = PipelineBuilder::<Self>::initial().await;
         if is_initial {
             return Self::setup_pipeline_builder(builder).await;
         }
@@ -204,7 +209,7 @@ mod test {
     #[crate::async_trait]
     impl busybody::Injectable for NewUser {
         async fn inject(c: &busybody::ServiceContainer) -> Self {
-            c.get_type().unwrap_or_default()
+            c.get_type().await.unwrap_or_default()
         }
     }
 
@@ -248,8 +253,8 @@ mod test {
             })
             .await;
 
-        let user_a = builder.build(NewUser::default()).await.deliver();
-        let user_b = NewUser::default().pipeline().await.deliver();
+        let user_a = builder.build(NewUser::default()).await.deliver().await;
+        let user_b = NewUser::default().pipeline().await.deliver().await;
 
         assert_eq!(user_a.id, user_b.id);
     }

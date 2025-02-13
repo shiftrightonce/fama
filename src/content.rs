@@ -10,30 +10,31 @@ pub(crate) enum PipeState {
     Stop,
 }
 
-impl Default for PipeContent {
-    fn default() -> Self {
-        let container = Arc::new(ServiceContainer::proxy());
-        container.set(PipeState::Run);
-
-        let pipe = Self(container);
-        pipe.container().set_type(pipe.clone()).get_type().unwrap()
-    }
-}
-
 #[busybody::async_trait]
 impl busybody::Injectable for PipeContent {
     async fn inject(c: &ServiceContainer) -> Self {
-        c.get_type().unwrap_or_default()
+        if let Some(instance) = c.get_type::<Self>().await {
+            return instance;
+        }
+        Self::make().await
     }
 }
 
 impl PipeContent {
-    pub fn new<T>(content: T) -> Self
+    pub async fn make() -> Self {
+        let container = Arc::new(ServiceContainer::proxy());
+        let pipe = Self(container);
+        pipe.container().set(PipeState::Run).await;
+        pipe.container().set_type(pipe.clone()).await;
+        pipe
+    }
+    pub async fn new<T>(content: T) -> Self
     where
         T: Clone + Send + Sync + 'static,
     {
-        let pipe = Self::default();
-        pipe.container().set_type(content);
+        let pipe = Self::make().await;
+        pipe.container().set_type(content).await;
+
         pipe
     }
     /// Returns a busybody's ServiceContainer
@@ -41,19 +42,19 @@ impl PipeContent {
         &self.0
     }
 
-    pub fn store<T: Clone + Send + Sync + 'static>(&self, data: T) -> &Self {
-        self.container().set_type(data);
+    pub async fn store<T: Clone + Send + Sync + 'static>(&self, data: T) -> &Self {
+        self.container().set_type(data).await;
         self
     }
 
     /// Notify the pipeline to stop flowing the content
-    pub fn stop_the_flow(&self) {
-        self.container().set(PipeState::Stop);
+    pub async fn stop_the_flow(&self) {
+        self.container().set(PipeState::Stop).await;
     }
 
     /// Alias for `stop_the_flow`
-    pub fn stop(&self) {
-        self.stop_the_flow();
+    pub async fn stop(&self) {
+        self.stop_the_flow().await;
     }
 }
 
@@ -68,7 +69,7 @@ mod test {
         let pipe: PipeContent = provide().await;
 
         assert_eq!(
-            *pipe.container().get::<PipeState>().unwrap(),
+            *pipe.container().get::<PipeState>().await.unwrap(),
             PipeState::Run,
             "The pipe state should have been 'run'"
         );
@@ -77,10 +78,10 @@ mod test {
     #[tokio::test]
     async fn test_flow_stop() {
         let pipe: PipeContent = provide().await;
-        pipe.stop();
+        pipe.stop().await;
 
         assert_eq!(
-            *pipe.container().get::<PipeState>().unwrap(),
+            *pipe.container().get::<PipeState>().await.unwrap(),
             PipeState::Stop
         );
     }

@@ -19,6 +19,7 @@
 //! async fn main() {
 //!   // A new user instance is being passed through the pipeline
 //!   let new_user = fama::Pipeline::pass(NewUser::default()) // The input/content
+//!       .await
 //!       .through(ValidateUserName).await  // pipe "ValidateUserName" will stop the flow if the user does not have a "username"
 //!       .through(GenerateUserId).await    // pipe "GenerateUserId" generates and set the user ID.  
 //!       .through(ApplyDefaultRole).await  // pipe "ApplyDefaultRole" will give the user the "Basic" role if the list of roles is empty
@@ -26,7 +27,7 @@
 //!       .through_fn(|_pipe: fama::PipeContent| async {
 //!           println!("yep, you can pass a closure or function too");
 //!       }).await
-//!       .deliver();                       // starts the process or use
+//!       .deliver().await;                       // starts the process or use
 //!       // .confirm()                     // Return true when the content passes throug all the pipes
 //!
 //!   // Fails because "new user" does not have a "username"
@@ -38,11 +39,12 @@
 //!         username: Some("user1".into()),  // "new user" has a username
 //!         ..NewUser::default()
 //!     })
+//!     .await
 //!     .through(ValidateUserName).await
 //!     .through(GenerateUserId).await
 //!     .through(ApplyDefaultRole).await
 //!     .through(SaveNewUserData).await
-//!     .deliver();
+//!     .deliver().await;
 //!
 //!   println!(
 //!         "passes validation and all fields are set : {:#?}",
@@ -76,7 +78,7 @@
 //!  async fn inject(c: &busybody::ServiceContainer) -> Self {
 //!     // get the instance of the type in the current scope or
 //!     // create a new instance
-//!     c.get_type().unwrap_or_else(|| Self::default())
+//!     c.get_type().await.unwrap_or_else(|| Self::default())
 //!  }
 //! }
 //!
@@ -172,33 +174,36 @@ pub trait PipelineTrait {
     async fn handle_pipe(&self, pipeline: Pipeline<Self::Content>) -> Pipeline<Self::Content>;
 
     async fn deliver(&self, subject: Self::Content) -> Self::Content {
-        let pipeline = Pipeline::pass(subject);
-        self.handle_pipe(pipeline).await.deliver()
+        let pipeline = Pipeline::pass(subject).await;
+        self.handle_pipe(pipeline).await.deliver().await
     }
 
     async fn try_to_deliver(&self, subject: Self::Content) -> Option<Self::Content> {
-        let pipeline = Pipeline::pass(subject);
-        self.handle_pipe(pipeline).await.try_deliver_as()
+        let pipeline = Pipeline::pass(subject).await;
+        self.handle_pipe(pipeline).await.try_deliver_as().await
     }
 
-    async fn deliver_as<R: Clone + 'static>(&self, subject: Self::Content) -> R
+    async fn deliver_as<R: Clone + Send + Sync + 'static>(&self, subject: Self::Content) -> R
     where
         Self: Sized,
     {
-        let pipeline = Pipeline::pass(subject);
-        self.handle_pipe(pipeline).await.deliver_as()
+        let pipeline = Pipeline::pass(subject).await;
+        self.handle_pipe(pipeline).await.deliver_as().await
     }
 
-    async fn try_deliver_as<R: Clone + 'static>(&self, subject: Self::Content) -> Option<R>
+    async fn try_deliver_as<R: Clone + Send + Sync + 'static>(
+        &self,
+        subject: Self::Content,
+    ) -> Option<R>
     where
         Self: Sized,
     {
-        let pipeline = Pipeline::pass(subject);
-        self.handle_pipe(pipeline).await.try_deliver_as()
+        let pipeline = Pipeline::pass(subject).await;
+        self.handle_pipe(pipeline).await.try_deliver_as().await
     }
 
     async fn confirm(&self, subject: Self::Content) -> bool {
-        let pipeline = Pipeline::pass(subject);
+        let pipeline = Pipeline::pass(subject).await;
         self.handle_pipe(pipeline).await.confirm()
     }
 }
