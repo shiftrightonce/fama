@@ -3,7 +3,7 @@ use std::sync::Arc;
 use futures::future::BoxFuture;
 use tokio::sync::RwLock;
 
-use crate::{pipeline::PipeFnHandler, Pipeline};
+use crate::{Pipeline, pipeline::PipeFnHandler};
 
 type PipeList<T> = Arc<RwLock<Vec<fn(Pipeline<T>) -> BoxFuture<'static, Pipeline<T>>>>>;
 
@@ -139,8 +139,8 @@ impl<T: Clone + Send + Sync + 'static> PipelineBuilder<T> {
 
     pub async fn build(&self, content: T) -> Pipeline<T> {
         let mut pipeline = Pipeline::pass(content).await;
-        let lock = self.pipes.read().await;
-        for pipe in lock.iter() {
+        let mut lock = self.pipes.write().await;
+        for pipe in lock.iter_mut() {
             pipeline = pipe.pipe_fn_handle((pipeline,)).await;
         }
 

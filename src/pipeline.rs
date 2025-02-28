@@ -3,7 +3,7 @@ use busybody::Resolver;
 use futures::future::Future;
 use std::marker::PhantomData;
 
-use crate::{content::PipeState, PipeContent};
+use crate::{PipeContent, content::PipeState};
 
 /// The pipes manager
 #[derive(Clone)]
@@ -35,7 +35,7 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     /// The closure can accept zero or more arguments.
     /// Unlike a struct pipe, a closure does not have to use a tuple
     /// for multiple arguments. Arguments can be up to 17
-    pub async fn through_fn<H, Args, O>(mut self, handler: H) -> Self
+    pub async fn through_fn<H, Args, O>(mut self, mut handler: H) -> Self
     where
         H: PipeFnHandler<Args, O>,
         Args: busybody::Resolver + 'static,
@@ -56,7 +56,7 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     /// Unlike a struct pipe, a closure does not have to use a tuple
     /// for multiple arguments. Arguments can be up to 17
     /// Closure must return a boolean. `False` will stop the pipe flow
-    pub async fn next_fn<H, Args>(mut self, handler: H) -> Self
+    pub async fn next_fn<H, Args>(mut self, mut handler: H) -> Self
     where
         H: PipeFnHandler<Args, bool>,
         Args: busybody::Resolver + 'static,
@@ -75,7 +75,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     }
 
     /// Stores the result from the pipe handler
-    pub async fn store_fn<H, Args, O: Clone + Send + Sync + 'static>(mut self, handler: H) -> Self
+    pub async fn store_fn<H, Args, O: Clone + Send + Sync + 'static>(
+        mut self,
+        mut handler: H,
+    ) -> Self
     where
         H: PipeFnHandler<Args, O>,
         Args: busybody::Resolver + 'static,
@@ -95,7 +98,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
 
     // Stores Option<T> returned by the handler
     // If option is `none` the pipe flow is stopped
-    pub async fn some_fn<H, Args, O: Clone + Send + Sync + 'static>(mut self, handler: H) -> Self
+    pub async fn some_fn<H, Args, O: Clone + Send + Sync + 'static>(
+        mut self,
+        mut handler: H,
+    ) -> Self
     where
         H: PipeFnHandler<Args, Option<O>>,
         Args: busybody::Resolver + 'static,
@@ -126,7 +132,7 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
         E: Clone + Send + Sync + 'static,
     >(
         mut self,
-        handler: H,
+        mut handler: H,
     ) -> Self
     where
         H: PipeFnHandler<Args, Result<O, E>>,
@@ -305,27 +311,27 @@ pub trait FamaPipe<Args, O> {
 pub trait PipeFnHandler<Args, O>: Send + Sync + 'static {
     type Future: Future<Output = O> + Send;
 
-    fn pipe_fn_handle(&self, args: Args) -> Self::Future;
+    fn pipe_fn_handle(&mut self, args: Args) -> Self::Future;
 }
 
 impl<Func, Fut, O> PipeFnHandler<(), O> for Func
 where
-    Func: Send + Sync + Fn() -> Fut + Send + Sync + 'static,
+    Func: Send + Sync + FnMut() -> Fut + Send + Sync + 'static,
     Fut: Future<Output = O> + Send,
 {
     type Future = Fut;
-    fn pipe_fn_handle(&self, _: ()) -> Self::Future {
+    fn pipe_fn_handle(&mut self, _: ()) -> Self::Future {
         (self)()
     }
 }
 
 impl<Func, Arg1, Fut, O> PipeFnHandler<(Arg1,), O> for Func
 where
-    Func: Send + Sync + Fn(Arg1) -> Fut + Send + Sync + 'static,
+    Func: Send + Sync + FnMut(Arg1) -> Fut + Send + Sync + 'static,
     Fut: Future<Output = O> + Send,
 {
     type Future = Fut;
-    fn pipe_fn_handle(&self, (c,): (Arg1,)) -> Self::Future {
+    fn pipe_fn_handle(&mut self, (c,): (Arg1,)) -> Self::Future {
         (self)(c)
     }
 }
@@ -333,13 +339,13 @@ where
 macro_rules! pipe_func{
     ($($T: ident),*) => {
         impl<Func, $($T),+, Fut, O> PipeFnHandler <($($T),+), O> for Func
-         where Func: Fn($($T),+) -> Fut + Send + Sync + 'static,
+         where Func: FnMut($($T),+) -> Fut + Send + Sync + 'static,
          Fut: Future<Output = O> + Send,
         {
             type Future = Fut;
 
             #[allow(non_snake_case)]
-            fn pipe_fn_handle(&self, ($($T),+): ($($T),+)) -> Self::Future {
+            fn pipe_fn_handle(&mut self, ($($T),+): ($($T),+)) -> Self::Future {
                 (self)($($T),+)
             }
         }
@@ -556,13 +562,7 @@ mod test {
     async fn test_some_flow_fn() {
         let result1 = Pipeline::pass(0)
             .await
-            .some_fn(|n: i32| async move {
-                if n > 10 {
-                    Some(n)
-                } else {
-                    None
-                }
-            })
+            .some_fn(|n: i32| async move { if n > 10 { Some(n) } else { None } })
             .await
             .deliver_as::<Option<i32>>()
             .await;
@@ -571,13 +571,7 @@ mod test {
 
         let result2 = Pipeline::pass(100)
             .await
-            .some_fn(|n: i32| async move {
-                if n > 10 {
-                    Some(n)
-                } else {
-                    None
-                }
-            })
+            .some_fn(|n: i32| async move { if n > 10 { Some(n) } else { None } })
             .await
             .deliver_as::<Option<i32>>()
             .await;
@@ -591,11 +585,7 @@ mod test {
         #[async_trait::async_trait]
         impl FamaPipe<i32, Option<i32>> for SomeI32 {
             async fn receive_pipe_content(&self, n: i32) -> Option<i32> {
-                if n > 10 {
-                    Some(n)
-                } else {
-                    None
-                }
+                if n > 10 { Some(n) } else { None }
             }
         }
         let result1 = Pipeline::pass(0)
@@ -621,13 +611,7 @@ mod test {
     async fn test_result_flow_fn() {
         let result1 = Pipeline::pass(0)
             .await
-            .ok_fn(|n: i32| async move {
-                if n > 10 {
-                    Ok::<i32, ()>(n)
-                } else {
-                    Err(())
-                }
-            })
+            .ok_fn(|n: i32| async move { if n > 10 { Ok::<i32, ()>(n) } else { Err(()) } })
             .await
             .deliver_as::<Result<i32, ()>>()
             .await;
@@ -636,13 +620,7 @@ mod test {
 
         let result2 = Pipeline::pass(100)
             .await
-            .ok_fn(|n: i32| async move {
-                if n > 10 {
-                    Ok::<i32, ()>(n)
-                } else {
-                    Err(())
-                }
-            })
+            .ok_fn(|n: i32| async move { if n > 10 { Ok::<i32, ()>(n) } else { Err(()) } })
             .await
             .deliver_as::<Result<i32, ()>>()
             .await;
@@ -656,11 +634,7 @@ mod test {
         #[async_trait::async_trait]
         impl FamaPipe<i32, Result<i32, ()>> for SomeI32 {
             async fn receive_pipe_content(&self, n: i32) -> Result<i32, ()> {
-                if n > 10 {
-                    Ok(n)
-                } else {
-                    Err(())
-                }
+                if n > 10 { Ok(n) } else { Err(()) }
             }
         }
         let result1 = Pipeline::pass(0)
