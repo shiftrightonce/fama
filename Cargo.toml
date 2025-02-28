@@ -1,11 +1,10 @@
 [package]
 name = "fama"
-version = "0.4.2"
-edition = "2021"
+version = "0.4.3"
+edition = "2024"
 license = "MIT"
 description = "Pipeline Manager"
 repository = "https://github.com/shiftrightonce/fama"
-rust-version = "1.70"
 keywords = ["webdev", "web", "event", "pipeline", "pipeline-pattern"]
 categories = ["asynchronous", "web-programming"]
 
