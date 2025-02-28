@@ -72,15 +72,6 @@
 //!   }
 //! }
 //!
-//! // making the pipe input type injectable
-//! #[fama::async_trait]
-//! impl busybody::Injectable for NewUser {
-//!  async fn inject(c: &busybody::ServiceContainer) -> Self {
-//!     // get the instance of the type in the current scope or
-//!     // create a new instance
-//!     c.get_type().await.unwrap_or_else(|| Self::default())
-//!  }
-//! }
 //!
 //! // The various roles a user can have
 //! #[derive(Debug, Clone)]

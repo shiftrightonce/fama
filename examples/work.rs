@@ -1,24 +1,3 @@
-# Fama
-
-**Fama is a pipeline manager**
-
-> Fama means "pass to someone" or "pass me"
-
- Fama makes it easy to layout the steps
- require to accomplish a task.
- Each step in the process is refer to as a pipe. The data or content is passed through
- the "pipes". At any stage the flow can be stopped.
-
- This pattern is usually refer to as the "pipeline" pattern. It is very similar to the
- middleware pattern.
-
- This implementation remove the responsibility of the current "pipe" calling the next pipe like
- in the middleware patten. A "pipe" can apply it's changes/logic or stop the flow. It is the "pipeline"
- that initiates the next call.
-
- The following example is illustrating a "New User" flow through the pipeline.
-
- ```rust
 #[tokio::main]
 async fn main() {
     // A new user instance is being passed through the pipeline
@@ -162,23 +141,3 @@ impl fama::FamaPipe<(NewUser, fama::PipeContent), Option<fama::PipeContent>> for
         Some(content)
     }
 }
-
- ```
-## Examples
-The [examples](https://github.com/shiftrightonce/fama/tree/main/examples) folder contains some examples. If none of the examples are helpful,
-please reach out with your use case and I  try to provide one.
-
-
-## Feedback
-If you find this crate useful, please star the repository. Submit your issues and recommendations as well.
-
-
-## License
-
-### The MIT License (MIT)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
