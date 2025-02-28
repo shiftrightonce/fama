@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.4] - 2025-02-28
+
+[381d2b2](381d2b2fd95454a9816b42588fd6251d642f7506)...[e51bb87](e51bb8768c4a0889d5af2ad5d2dc5e47a0c2bdd4)
+
+### Features
+
+- Change pipe function to FnMut ([https://github.com/shiftrightonce/fama/commit/5bdbc50](5bdbc501e0bf674e48f1e2d5195e5f52b4e6cac8))
+
 ## [0.4.1] - 2025-02-28
 
 [84ea402](84ea40241feb8c355fb5b4b771869b735badda94)...[e6a8fc0](e6a8fc0e351ee141adab7f5f012b6b9c69f5b8b4)
