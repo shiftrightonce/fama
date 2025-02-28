@@ -21,14 +21,14 @@ impl busybody::Resolver for PipeContent {
 }
 
 impl PipeContent {
-    pub async fn make() -> Self {
+    pub(crate) async fn make() -> Self {
         let container = Arc::new(ServiceContainer::proxy());
         let pipe = Self(container);
         pipe.container().set(PipeState::Run).await;
         pipe.container().set_type(pipe.clone()).await;
         pipe
     }
-    pub async fn new<T>(content: T) -> Self
+    pub(crate) async fn new<T>(content: T) -> Self
     where
         T: Clone + Send + Sync + 'static,
     {
