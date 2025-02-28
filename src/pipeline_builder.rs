@@ -7,7 +7,7 @@ use crate::{pipeline::PipeFnHandler, Pipeline};
 
 type PipeList<T> = Arc<RwLock<Vec<fn(Pipeline<T>) -> BoxFuture<'static, Pipeline<T>>>>>;
 
-/// PipelineBuilder provides flexibility and extendibility to your pipelines
+/// PipelineBuilder provides flexibility and extensibility to your pipelines
 ///
 /// Pipes/function can be appended to your type pipeline from other places in your code or even
 /// across crates.
@@ -19,12 +19,6 @@ type PipeList<T> = Arc<RwLock<Vec<fn(Pipeline<T>) -> BoxFuture<'static, Pipeline
 /// #[derive(Default, Clone)]
 /// struct MeaningOfLife(i32);
 ///
-/// #[fama::async_trait]
-/// impl busybody::Injectable for MeaningOfLife {
-///     async fn inject(container: &busybody::ServiceContainer) -> Self {
-///        container.get_type().await.unwrap_or_default()
-///    }
-/// }
 ///
 ///
 /// #[tokio::main]
@@ -56,12 +50,6 @@ type PipeList<T> = Arc<RwLock<Vec<fn(Pipeline<T>) -> BoxFuture<'static, Pipeline
 /// #[derive(Default, Clone)]
 /// struct MeaningOfLife(i32);
 ///
-/// #[fama::async_trait]
-/// impl busybody::Injectable for MeaningOfLife {
-///     async fn inject(container: &busybody::ServiceContainer) -> Self {
-///        container.get_type().await.unwrap_or_default()
-///    }
-/// }
 ///
 /// #[fama::async_trait]
 /// impl PipelineBuilderTrait for MeaningOfLife {
@@ -116,7 +104,10 @@ pub struct PipelineBuilder<T: Clone + Send + Sync + 'static> {
 
 impl<T: Clone + Send + Sync + 'static> PipelineBuilder<T> {
     pub fn new() -> Self {
-        futures::executor::block_on(busybody::helpers::get_type_or_inject())
+        futures::executor::block_on(async {
+            let (_, instance) = Self::initial().await;
+            instance
+        })
     }
 
     pub async fn initial() -> (bool, Self) {
@@ -157,24 +148,17 @@ impl<T: Clone + Send + Sync + 'static> PipelineBuilder<T> {
     }
 }
 
-#[busybody::async_trait]
-impl<T: Clone + Send + Sync + 'static> busybody::Injectable for PipelineBuilder<T> {
-    async fn inject(_: &busybody::ServiceContainer) -> Self {
-        Self {
-            pipes: Arc::default(),
-        }
-    }
-}
-
 impl<T: Clone + Send + Sync + 'static> Default for PipelineBuilder<T> {
     fn default() -> Self {
-        Self::new()
+        Self {
+            pipes: Default::default(),
+        }
     }
 }
 
 #[busybody::async_trait]
 pub trait PipelineBuilderTrait: Clone + Send + Sync {
-    /// Will be called the first time an instace of the builder is instantiated
+    /// Will be called the first time an instance of the builder is instantiated
     /// Use this method to prepend pipes
     async fn setup_pipeline_builder(builder: PipelineBuilder<Self>) -> PipelineBuilder<Self> {
         builder
@@ -207,8 +191,8 @@ mod test {
     }
 
     #[crate::async_trait]
-    impl busybody::Injectable for NewUser {
-        async fn inject(c: &busybody::ServiceContainer) -> Self {
+    impl busybody::Resolver for NewUser {
+        async fn resolve(c: &busybody::ServiceContainer) -> Self {
             c.get_type().await.unwrap_or_default()
         }
     }
@@ -236,7 +220,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_multipe_instance() {
+    async fn test_multiple_instances() {
         let builder = PipelineBuilder::<NewUser>::new();
         let builder2 = NewUser::pipeline_builder().await;
 

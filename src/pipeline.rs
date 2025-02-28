@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use busybody::Resolver;
 use futures::future::Future;
 use std::marker::PhantomData;
 
@@ -37,10 +38,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     pub async fn through_fn<H, Args, O>(mut self, handler: H) -> Self
     where
         H: PipeFnHandler<Args, O>,
-        Args: busybody::Injectable + 'static,
+        Args: busybody::Resolver + 'static,
     {
         if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
-            let args = Args::inject(self.container()).await;
+            let args = Args::resolve(self.container()).await;
             handler.pipe_fn_handle(args).await;
             self.went_through = true;
         } else {
@@ -58,10 +59,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     pub async fn next_fn<H, Args>(mut self, handler: H) -> Self
     where
         H: PipeFnHandler<Args, bool>,
-        Args: busybody::Injectable + 'static,
+        Args: busybody::Resolver + 'static,
     {
         if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
-            let args = Args::inject(self.container()).await;
+            let args = Args::resolve(self.container()).await;
             if !handler.pipe_fn_handle(args).await {
                 self.container().set(PipeState::Stop).await;
             }
@@ -77,10 +78,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     pub async fn store_fn<H, Args, O: Clone + Send + Sync + 'static>(mut self, handler: H) -> Self
     where
         H: PipeFnHandler<Args, O>,
-        Args: busybody::Injectable + 'static,
+        Args: busybody::Resolver + 'static,
     {
         if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
-            let args = Args::inject(self.container()).await;
+            let args = Args::resolve(self.container()).await;
             self.container()
                 .set_type(handler.pipe_fn_handle(args).await)
                 .await;
@@ -97,10 +98,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     pub async fn some_fn<H, Args, O: Clone + Send + Sync + 'static>(mut self, handler: H) -> Self
     where
         H: PipeFnHandler<Args, Option<O>>,
-        Args: busybody::Injectable + 'static,
+        Args: busybody::Resolver + 'static,
     {
         if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
-            let args = Args::inject(self.container()).await;
+            let args = Args::resolve(self.container()).await;
             let option = handler.pipe_fn_handle(args).await;
 
             if option.is_none() {
@@ -129,10 +130,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     ) -> Self
     where
         H: PipeFnHandler<Args, Result<O, E>>,
-        Args: busybody::Injectable + 'static,
+        Args: busybody::Resolver + 'static,
     {
         if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
-            let args = Args::inject(self.container()).await;
+            let args = Args::resolve(self.container()).await;
             let result = handler.pipe_fn_handle(args).await;
 
             if result.is_err() {
@@ -153,10 +154,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     pub async fn through<H, Args, O>(mut self, handler: H) -> Self
     where
         H: FamaPipe<Args, O>,
-        Args: busybody::Injectable + 'static,
+        Args: busybody::Resolver + 'static,
     {
         if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
-            let args = Args::inject(self.container()).await;
+            let args = Args::resolve(self.container()).await;
             handler.receive_pipe_content(args).await;
             self.went_through = true;
         } else {
@@ -171,10 +172,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     pub async fn next<H, Args>(mut self, handler: H) -> Self
     where
         H: FamaPipe<Args, bool>,
-        Args: busybody::Injectable + 'static,
+        Args: busybody::Resolver + 'static,
     {
         if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
-            let args = Args::inject(self.container()).await;
+            let args = Args::resolve(self.container()).await;
             if !handler.receive_pipe_content(args).await {
                 self.container().set(PipeState::Stop).await;
             }
@@ -188,10 +189,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     pub async fn store<H, Args, O: Clone + Send + Sync + 'static>(mut self, handler: H) -> Self
     where
         H: FamaPipe<Args, O>,
-        Args: busybody::Injectable + 'static,
+        Args: busybody::Resolver + 'static,
     {
         if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
-            let args = Args::inject(self.container()).await;
+            let args = Args::resolve(self.container()).await;
             self.container()
                 .set_type(handler.receive_pipe_content(args).await)
                 .await;
@@ -208,10 +209,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     pub async fn some<H, Args, O: Clone + Send + Sync + 'static>(mut self, handler: H) -> Self
     where
         H: FamaPipe<Args, Option<O>>,
-        Args: busybody::Injectable + 'static,
+        Args: Resolver + 'static,
     {
         if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
-            let args = Args::inject(self.container()).await;
+            let args = Args::resolve(self.container()).await;
             let option = handler.receive_pipe_content(args).await;
 
             if option.is_none() {
@@ -235,10 +236,10 @@ impl<T: Clone + Send + Sync + 'static> Pipeline<T> {
     ) -> Self
     where
         H: FamaPipe<Args, Result<O, E>>,
-        Args: busybody::Injectable + 'static,
+        Args: busybody::Resolver + 'static,
     {
         if *self.container().get::<PipeState>().await.unwrap() == PipeState::Run {
-            let args = Args::inject(self.container()).await;
+            let args = Args::resolve(self.container()).await;
             let result = handler.receive_pipe_content(args).await;
 
             if result.is_err() {

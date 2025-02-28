@@ -11,8 +11,8 @@ pub(crate) enum PipeState {
 }
 
 #[busybody::async_trait]
-impl busybody::Injectable for PipeContent {
-    async fn inject(c: &ServiceContainer) -> Self {
+impl busybody::Resolver for PipeContent {
+    async fn resolve(c: &ServiceContainer) -> Self {
         if let Some(instance) = c.get_type::<Self>().await {
             return instance;
         }
@@ -60,13 +60,12 @@ impl PipeContent {
 
 #[cfg(test)]
 mod test {
-    use busybody::helpers::provide;
 
     use super::*;
 
     #[tokio::test]
     async fn test_flow_is_running() {
-        let pipe: PipeContent = provide().await;
+        let pipe: PipeContent = PipeContent::make().await;
 
         assert_eq!(
             *pipe.container().get::<PipeState>().await.unwrap(),
@@ -77,7 +76,7 @@ mod test {
 
     #[tokio::test]
     async fn test_flow_stop() {
-        let pipe: PipeContent = provide().await;
+        let pipe = PipeContent::make().await;
         pipe.stop().await;
 
         assert_eq!(
