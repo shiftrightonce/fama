@@ -38,14 +38,6 @@ async fn main() {
 #[derive(Debug, Clone)]
 struct ProductSKU(String);
 
-// 4. As usual, we implement the injectable trait
-#[fama::async_trait]
-impl busybody::Injectable for ProductSKU {
-    async fn inject(container: &fama::busybody::ServiceContainer) -> Self {
-        container.get_type().await.unwrap()
-    }
-}
-
 // 5. A struct that will contain on the "pipes"
 //    we require to complete the task
 struct CleanProductSKU;
@@ -61,13 +53,13 @@ impl fama::PipelineTrait for CleanProductSKU {
         pipeline: fama::Pipeline<Self::Content>,
     ) -> fama::Pipeline<Self::Content> {
         pipeline
-            // - replace spaces with a dash and store the result
+            // - Replace spaces with a dash and store the result
             .store_fn(|mut content: ProductSKU| async move {
                 content.0 = content.0.replace(' ', "-");
                 content
             })
             .await
-            // - store an i32 in the pipe
+            // - Store an i32 in the pipe
             .store_fn(|| async { 44 })
             .await
     }

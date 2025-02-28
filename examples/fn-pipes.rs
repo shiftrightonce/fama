@@ -51,14 +51,6 @@ impl Default for NewUser {
     }
 }
 
-// making the pipe input type injectable
-#[fama::async_trait]
-impl busybody::Injectable for NewUser {
-    async fn inject(c: &busybody::ServiceContainer) -> Self {
-        c.get_type().await.unwrap_or_default()
-    }
-}
-
 #[derive(Debug, Clone)]
 enum UserRole {
     Admin,

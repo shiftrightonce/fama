@@ -6,7 +6,7 @@ pub async fn setup() {
     let builder = CreateUser::pipeline_builder().await;
 
     // Add your pipes by passing a callback to the builder "register" method.
-    // In this case we are pretending to do some "loggin" here
+    // In this case we are pretending to do some "logging" here
     builder
         .register(|p| {
             // We need to return a pin box because at this stage

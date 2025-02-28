@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use busybody::{helpers::service_container, ServiceContainer};
+use busybody::helpers::service_container;
 use fama::PipeContent;
 
 #[tokio::main]
@@ -14,11 +14,11 @@ async fn main() {
         })
         .await
         .through_fn(|config: Config, count: i32| async move {
-            // there is an instance of an I32 type in this pipeline scope.
+            // There is an instance of an i32 type in this pipeline scope.
             // The value that was "pass".
             println!("count value: {count}");
 
-            // This  instance of config will have the value 250
+            // This instance of config will have the value 250
             println!("pipe 'local' config: {:#?}", config);
         })
         .await
@@ -38,12 +38,5 @@ struct Config(i32);
 impl Default for Config {
     fn default() -> Self {
         Self(44)
-    }
-}
-
-#[busybody::async_trait]
-impl busybody::Injectable for Config {
-    async fn inject(c: &ServiceContainer) -> Self {
-        c.proxy_value().await.unwrap_or_default()
     }
 }

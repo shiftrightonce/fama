@@ -18,13 +18,6 @@ impl CreateUser {
     }
 }
 
-#[busybody::async_trait]
-impl busybody::Injectable for CreateUser {
-    async fn inject(container: &busybody::ServiceContainer) -> Self {
-        container.get_type().await.unwrap_or_default()
-    }
-}
-
 #[fama::async_trait]
 impl PipelineBuilderTrait for CreateUser {
     async fn setup_pipeline_builder(builder: PipelineBuilder<Self>) -> PipelineBuilder<Self> {

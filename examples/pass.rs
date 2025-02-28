@@ -29,9 +29,8 @@ async fn main() {
     println!("fails validation: {:#?}", &new_user); // The flow is stopped by the "ValidateUserName" pipe because the user does not have a "username"
 }
 
-// pipeline input
-// Must be clonable. A clone of the data is passed to any pipe that requires it
-// The type must also be injectable. See futher below
+// Pipeline input
+// Must be cloneable. A clone of the data is passed to any pipe that requires it
 #[derive(Debug, Clone)]
 struct NewUser {
     internal_id: i32,
@@ -51,14 +50,6 @@ impl Default for NewUser {
     }
 }
 
-// making the pipe input type injectable
-#[fama::async_trait]
-impl busybody::Injectable for NewUser {
-    async fn inject(c: &busybody::ServiceContainer) -> Self {
-        c.proxy_value().await.unwrap_or_else(|| Self::default())
-    }
-}
-
 #[derive(Debug, Clone)]
 enum UserRole {
     Admin,
@@ -69,10 +60,9 @@ enum UserRole {
 
 struct ValidateUserName;
 
-// A pipe must implemenet the `FamaPipe' trait
+// A pipe must implement the `FamaPipe' trait
 // In this case, ValidateUserName is expecting a tuple with two fields (NewUser, PipeContent)
-// A pipe can specify a parent parameter that is injectable. A tuple can be use when you
-// need to specifiy more arguements like in this case.
+// need to specify more arguments like in this case.
 #[fama::async_trait]
 impl fama::FamaPipe<(NewUser, PipeContent), Option<PipeContent>> for ValidateUserName {
     async fn receive_pipe_content(
@@ -82,7 +72,7 @@ impl fama::FamaPipe<(NewUser, PipeContent), Option<PipeContent>> for ValidateUse
         // When the username is "none", stop the flow
         if new_user.username.is_none() {
             println!("User name cannot be empty");
-            content.stop_the_flow().await; // notify the pipeline to stop flowing.
+            content.stop_the_flow().await; // Notify the pipeline to stop flowing.
         }
 
         Some(content)

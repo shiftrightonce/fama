@@ -6,7 +6,7 @@ pub async fn setup() {
     // Get the builder for the "create user pipeline"
     let builder = CreateUser::pipeline_builder().await;
 
-    // Add you pipes. In this case we are adding a "Content Manager" role to the list
+    // Add your pipes. In this case we are adding a "Content Manager" role to the list
     // of roles
     builder
         .register(|p| {

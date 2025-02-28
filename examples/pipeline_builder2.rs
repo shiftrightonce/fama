@@ -39,7 +39,7 @@ async fn main() {
         })
         .await;
 
-    // calling "pipeline" on the type instance kick off the flow
+    // Calling "pipeline" on the type instance kick off the flow
     let result = NewUser::default().pipeline().await.deliver().await;
 
     println!("result: {:#?}", result);
@@ -49,13 +49,6 @@ async fn main() {
 struct NewUser {
     id: Option<String>,
     role: Option<Vec<String>>,
-}
-
-#[fama::async_trait]
-impl busybody::Injectable for NewUser {
-    async fn inject(c: &busybody::ServiceContainer) -> Self {
-        c.get_type().await.unwrap_or_default()
-    }
 }
 
 #[fama::async_trait]
