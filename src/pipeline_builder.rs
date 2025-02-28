@@ -5,7 +5,8 @@ use tokio::sync::RwLock;
 
 use crate::{Pipeline, pipeline::PipeFnHandler};
 
-type PipeList<T> = Arc<RwLock<Vec<fn(Pipeline<T>) -> BoxFuture<'static, Pipeline<T>>>>>;
+type PipeList<T> =
+    Arc<RwLock<Vec<Box<dyn FnMut(Pipeline<T>) -> BoxFuture<'static, Pipeline<T>> + Send + Sync>>>>;
 
 /// PipelineBuilder provides flexibility and extensibility to your pipelines
 ///
@@ -127,12 +128,12 @@ impl<T: Clone + Send + Sync + 'static> PipelineBuilder<T> {
         }
     }
 
-    pub async fn register(
-        &self,
-        callback: fn(Pipeline<T>) -> BoxFuture<'static, Pipeline<T>>,
-    ) -> &Self {
+    pub async fn register<F>(&self, callback: F) -> &Self
+    where
+        F: FnMut(Pipeline<T>) -> BoxFuture<'static, Pipeline<T>> + Send + Sync + 'static,
+    {
         let mut lock = self.pipes.write().await;
-        lock.push(callback);
+        lock.push(Box::new(callback));
 
         self
     }
