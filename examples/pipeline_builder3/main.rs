@@ -6,7 +6,7 @@ mod crate_c;
 
 #[tokio::main]
 async fn main() {
-    // mock example of setting up external crates in your application
+    // Mock example of setting up external crates in your application
     crate_c::setup().await;
     crate_b::setup().await;
     crate_a::setup().await;

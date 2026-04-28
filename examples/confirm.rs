@@ -78,7 +78,7 @@ impl fama::FamaPipe<(NewUser, PipeContent), Option<PipeContent>> for ValidateUse
         // When the username is "none", stop the flow
         if new_user.username.is_none() {
             println!("User name cannot be empty");
-            content.stop_the_flow().await; // notify the pipeline to stop flowing.
+            content.stop_the_flow().await; // Notify the pipeline to stop flowing.
         }
 
         Some(content)
