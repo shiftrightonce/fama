@@ -13,7 +13,7 @@
  middleware pattern.
 
  This implementation remove the responsibility of the current "pipe" calling the next pipe like
- in the middleware patten. A "pipe" can apply it's changes/logic or stop the flow. It is the "pipeline"
+ in the middleware pattern. A "pipe" can apply its changes/logic or stop the flow. It is the "pipeline"
  that initiates the next call.
 
  The following example is illustrating a "New User" flow through the pipeline.
@@ -39,7 +39,7 @@ async fn main() {
         .await
         .deliver()
         .await; // starts the process or use
-                // .confirm()                     // Return true when the content passes throug all the pipes
+                // .confirm()                     // Return true when the content passes through all the pipes
 
     // Fails because "new user" does not have a "username"
     println!("fails validation: {:#?}", &new_user);
